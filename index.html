@@ -9,14 +9,17 @@
         :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; }
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--fb-bg); margin: 0; padding-bottom: 50px; }
         
+        /* 導覽列預設隱藏 */
         nav { background: white; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; justify-content: center; position: sticky; top: 0; z-index: 100; }
         nav a { text-decoration: none; color: #65676b; font-weight: bold; padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         nav a.active { color: var(--fb-blue); border-bottom: 3px solid var(--fb-blue); background: #e7f3ff; }
 
         .container { display: flex; justify-content: center; padding: 20px; min-height: 80vh; }
+        /* 所有頁面預設不顯示 */
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; display: none; }
         .card.active { display: block; }
         
+        /* 個人檔案排版 */
         .profile-title { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px; }
         .avatar-container { text-align: center; margin-bottom: 20px; }
         #p-img { width: 150px; height: 150px; border-radius: 50%; border: 1px solid #ddd; object-fit: cover; background: #eee; }
@@ -33,9 +36,16 @@
         .post-author-info { display: flex; align-items: center; }
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
         .delete-btn { background: none; color: #f02849; font-size: 12px; padding: 5px 10px; width: auto; font-weight: normal; cursor: pointer; }
+
+        /* 載入中動畫 */
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; justify-content: center; align-items: center; z-index: 9999; }
     </style>
 </head>
 <body>
+
+<div id="loading-screen">
+    <div style="color: #1877f2; font-weight: bold; font-size: 20px;">mimunity 載入中...</div>
+</div>
 
 <nav id="main-nav">
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
@@ -43,7 +53,7 @@
 </nav>
 
 <div class="container">
-    <div id="page-login" class="card active">
+    <div id="page-login" class="card">
         <h2 style="text-align: center;">登入 mimunity</h2>
         <input type="email" id="login-email" placeholder="Email">
         <input type="password" id="login-password" placeholder="密碼">
@@ -60,7 +70,7 @@
     </div>
 
     <div id="page-home" class="card">
-        <div id="welcome-msg" style="font-weight:bold; color:var(--fb-blue); text-align:center; margin-bottom:15px; font-size:18px;">載入中...</div>
+        <div id="welcome-msg" style="font-weight:bold; color:var(--fb-blue); text-align:center; margin-bottom:15px; font-size:18px;"></div>
         <textarea id="post-content" rows="3" placeholder="想分享什麼？"></textarea>
         <button class="btn-primary" onclick="handleCreatePost()">發佈貼文</button>
         <div id="posts-list"></div>
@@ -91,45 +101,51 @@
     const supabaseUrl = 'https://tofcvucrwcyvbmkywtaf.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg'; 
     
-    // 初始化時開啟自動持久化儲存
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true
-        }
+        auth: { persistSession: true, autoRefreshToken: true }
     });
 
-    // 頁面控制
+    // 核心切換邏輯
     function showPage(p) {
         document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-        document.getElementById('page-' + p).classList.add('active');
-        if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
+        const targetPage = document.getElementById('page-' + p);
+        if (targetPage) targetPage.classList.add('active');
+        if (document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
     }
 
     function toggleAuth(t) {
-        document.getElementById('page-login').classList.remove('active');
-        document.getElementById('page-register').classList.remove('active');
-        document.getElementById('page-' + t).classList.add('active');
+        showPage(t);
     }
 
-    // 發文
-    async function handleCreatePost() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const content = document.getElementById('post-content').value;
-        if (!content.trim()) return alert("請輸入內容");
-        const { error } = await supabaseClient.from('posts').insert([{ content, user_id: user.id }]);
-        if (error) alert("發文失敗: " + error.message); else { document.getElementById('post-content').value = ""; fetchPosts(); }
+    // 監聽登入狀態（這是解決重新整理會登出的關鍵）
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        // 隱藏載入畫面
+        document.getElementById('loading-screen').style.display = 'none';
+
+        if (session) {
+            // 已登入：顯示導覽列，跳轉首頁
+            document.getElementById('main-nav').style.display = 'flex';
+            showPage('home');
+            fetchPosts();
+            loadUserInfo(session.user);
+        } else {
+            // 未登入：隱藏導覽列，跳轉登入頁
+            document.getElementById('main-nav').style.display = 'none';
+            showPage('login');
+        }
+    });
+
+    async function loadUserInfo(user) {
+        const { data: prof } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+        if (prof) {
+            document.getElementById('welcome-msg').innerText = `歡迎回來，${prof.username || '宣宣'}！`;
+            document.getElementById('username').value = prof.username || "";
+            document.getElementById('bio').value = prof.bio || "";
+            if (prof.avatar_url) document.getElementById('p-img').src = prof.avatar_url;
+        }
     }
 
-    // 刪除
-    async function handleDeletePost(postId) {
-        if (!confirm("確定要刪除嗎？")) return;
-        const { error } = await supabaseClient.from('posts').delete().eq('id', postId);
-        if (error) alert("刪除失敗: " + error.message); else fetchPosts();
-    }
-
-    // 抓取貼文
     async function fetchPosts() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         const { data: posts, error } = await supabaseClient
@@ -160,53 +176,58 @@
         }).join('');
     }
 
-    // 檔案設定
-    async function saveProfile() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const updateData = { id: user.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value };
-        if (window.tempAvatarUrl) updateData.avatar_url = window.tempAvatarUrl;
-        const { error } = await supabaseClient.from('profiles').upsert(updateData);
-        if (error) alert(error.message); else { alert("已儲存"); location.reload(); }
-    }
-
-    // --- 關鍵修復：狀態監聽 ---
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            document.getElementById('main-nav').style.display = 'flex';
-            showPage('home');
-            loadUserInfo(session.user);
-            fetchPosts();
-        } else if (event === 'SIGNED_OUT') {
-            document.getElementById('main-nav').style.display = 'none';
-            showPage('login');
-        }
-    });
-
-    async function loadUserInfo(user) {
-        const { data: prof } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
-        if (prof) {
-            document.getElementById('welcome-msg').innerText = `歡迎回來，${prof.username || '宣宣'}！`;
-            document.getElementById('username').value = prof.username || "";
-            document.getElementById('bio').value = prof.bio || "";
-            if (prof.avatar_url) document.getElementById('p-img').src = prof.avatar_url;
-        }
-    }
-
     async function handleLogin() {
-        const e = document.getElementById('login-email').value;
-        const p = document.getElementById('login-password').value;
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: e, password: p });
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) alert("登入失敗: " + error.message);
     }
 
     async function handleSignUp() {
-        const e = document.getElementById('reg-email').value;
-        const p = document.getElementById('reg-password').value;
-        const { error } = await supabaseClient.auth.signUp({ email: e, password: p });
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const { error } = await supabaseClient.auth.signUp({ email, password });
         if (error) alert(error.message); else alert("註冊成功！請登入。");
     }
 
-    function handleLogout() { supabaseClient.auth.signOut(); }
+    async function handleCreatePost() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const content = document.getElementById('post-content').value;
+        if (!content.trim()) return alert("請輸入內容");
+        const { error } = await supabaseClient.from('posts').insert([{ content, user_id: user.id }]);
+        if (error) alert(error.message); else { document.getElementById('post-content').value = ""; fetchPosts(); }
+    }
+
+    async function handleDeletePost(postId) {
+        if (!confirm("確定要刪除嗎？")) return;
+        const { error } = await supabaseClient.from('posts').delete().eq('id', postId);
+        if (error) alert(error.message); else fetchPosts();
+    }
+
+    async function handleAvatarUpload() {
+        const file = document.getElementById('avatar-file').files[0];
+        if (!file) return alert("請選檔案");
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const path = `${user.id}/avatar_${Date.now()}`;
+        const { error } = await supabaseClient.storage.from('avatars').upload(path, file);
+        if (error) return alert(error.message);
+        const { data } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+        document.getElementById('p-img').src = data.publicUrl;
+        window.tempAvatarUrl = data.publicUrl;
+    }
+
+    async function saveProfile() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const updateData = { id: user.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value };
+        if (window.tempAvatarUrl) updateData.avatar_url = window.tempAvatarUrl;
+        await supabaseClient.from('profiles').upsert(updateData);
+        alert("已更新");
+        location.reload();
+    }
+
+    function handleLogout() {
+        supabaseClient.auth.signOut();
+    }
 </script>
 </body>
 </html>
