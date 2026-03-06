@@ -3,45 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mimunity - 社交平台</title>
+    <title>mimunity - 旗艦社交平台</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-gray: #65676b; }
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--fb-bg); margin: 0; padding-bottom: 50px; color: #1c1e21; }
+        
+        /* 導覽列 */
         nav { background: white; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; justify-content: center; position: sticky; top: 0; z-index: 100; }
-        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 25px; cursor: pointer; }
+        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 20px; cursor: pointer; }
         nav a.active { color: var(--fb-blue); border-bottom: 3px solid var(--fb-blue); background: #e7f3ff; }
+
         .container { display: flex; justify-content: center; padding: 20px; min-height: 80vh; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; display: none; }
         .card.active { display: block; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        
+        input[type="text"], input[type="password"], input[type="email"], textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
         .btn-primary { background: var(--fb-blue); color: white; margin-top: 10px; }
-        .btn-link { background: none; color: var(--fb-blue); text-decoration: underline; font-size: 14px; }
+
+        /* 貼文樣式 */
         .post-card { background: #fff; border: 1px solid #dddfe2; border-radius: 12px; padding: 15px; margin-top: 20px; }
         .post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .post-author-info { display: flex; align-items: center; gap: 10px; }
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
-        .post-time { font-size: 11px; color: var(--fb-gray); margin-top: 2px; }
-        .post-content-text { white-space: pre-wrap; word-break: break-all; padding: 5px 0; line-height: 1.5; font-size: 16px; }
+        .post-time { font-size: 11px; color: var(--fb-gray); }
+        .post-content-text { white-space: pre-wrap; word-break: break-all; padding: 5px 0; font-size: 16px; }
         .post-actions-bar { display: flex; border-top: 1px solid #eee; border-bottom: 1px solid #eee; margin: 10px 0; padding: 8px 0; }
         .like-btn { background: none; color: var(--fb-gray); flex: 1; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
         .like-btn.liked { color: var(--fb-blue); font-weight: bold; }
+        
+        /* 留言樣式 */
         .comment-section { margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; }
-        .comment-item { font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; }
+        .comment-item { font-size: 13px; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
         .comment-user { font-weight: bold; color: #050505; }
-        .action-text-btn { background: none; color: var(--fb-gray); font-size: 12px; width: auto; padding: 2px 5px; font-weight: normal; }
-        .delete-text-btn { color: #f02849; }
-        .comment-input-group { display: flex; gap: 8px; margin-top: 10px; }
-        .comment-input { flex: 1; padding: 8px 15px; border-radius: 20px; font-size: 13px; margin: 0; border: 1px solid #ddd; }
+        .action-text-btn { background: none; color: var(--fb-gray); font-size: 11px; width: auto; padding: 2px 5px; font-weight: normal; text-decoration: underline; }
+
+        /* 聊天室樣式 */
+        #chat-box { height: 400px; overflow-y: auto; border: 1px solid #eee; padding: 15px; background: #fafafa; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; }
+        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 18px; font-size: 14px; position: relative; }
+        .msg-other { background: #e4e6eb; align-self: flex-start; }
+        .msg-me { background: var(--fb-blue); color: white; align-self: flex-end; }
+        .msg-info { font-size: 10px; color: #888; margin-bottom: 4px; }
+        .msg-me .msg-info { color: #d0e7ff; text-align: right; }
+        .chat-actions { font-size: 10px; margin-top: 5px; display: flex; gap: 8px; opacity: 0.6; cursor: pointer; }
+
+        /* 防雷 (Spoiler) 修正版 */
+        .spoiler { background: #333; color: #333; cursor: pointer; border-radius: 4px; padding: 0 4px; }
+        .spoiler.revealed { background: rgba(0,0,0,0.1); color: inherit; }
+        
+        .spoiler-img-container { position: relative; cursor: pointer; overflow: hidden; border-radius: 8px; display: block; margin-top: 5px; }
+        .spoiler-img { filter: blur(40px); transition: filter 0.4s; max-width: 100%; display: block; border-radius: 8px; }
+        .spoiler-img.revealed { filter: blur(0) !important; }
+        .spoiler-img-container.revealed .spoiler-label { display: none !important; }
+
+        .spoiler-label { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: rgba(0,0,0,0.75); color: white; padding: 6px 14px; border-radius: 20px; 
+            font-weight: bold; font-size: 12px; pointer-events: none;
+            white-space: nowrap; /* 修正：確保文字不換行 */
+        }
+
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .chat-file-preview { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
 <div id="loading-screen"><div style="color: #1877f2; font-weight: bold; font-size: 20px;">mimunity 載入中...</div></div>
+
 <nav id="main-nav">
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
+    <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
 </nav>
 
@@ -50,32 +84,51 @@
         <h2 style="text-align: center;">登入 mimunity</h2>
         <input type="email" id="login-email" placeholder="Email">
         <input type="password" id="login-password" placeholder="密碼">
-        <button class="btn-primary" onclick="handleLogin()">登入</button>
-        <button class="btn-link" onclick="toggleAuth('register')">註冊帳號</button>
+        <button id="btn-login" class="btn-primary" onclick="handleLogin()">登入</button>
+        <button style="background:none; color:var(--fb-blue); text-decoration:underline;" onclick="toggleAuth('register')">註冊帳號</button>
     </div>
+
     <div id="page-register" class="card">
         <h2 style="text-align: center;">註冊帳號</h2>
         <input type="email" id="reg-email" placeholder="Email">
         <input type="password" id="reg-password" placeholder="設定密碼">
-        <button style="background:#42b72a; color:white;" onclick="handleSignUp()">註冊</button>
-        <button class="btn-link" onclick="toggleAuth('login')">返回登入</button>
+        <button id="btn-reg" style="background:#42b72a; color:white;" onclick="handleSignUp()">註冊</button>
+        <button style="background:none; color:var(--fb-blue); text-decoration:underline;" onclick="toggleAuth('login')">返回登入</button>
     </div>
+
     <div id="page-home" class="card">
         <div id="welcome-msg" style="font-weight:bold; color:var(--fb-blue); text-align:center; margin-bottom:15px;"></div>
         <textarea id="post-content" rows="3" placeholder="想分享什麼？"></textarea>
-        <button class="btn-primary" onclick="handleCreatePost()">發佈貼文</button>
+        <button id="btn-create-post" class="btn-primary" onclick="handleCreatePost()">發佈貼文</button>
         <div id="posts-list"></div>
     </div>
+
+    <div id="page-chat" class="card">
+        <h3 style="margin:0 0 10px 0;">💬 公共聊天大廳</h3>
+        <div id="chat-box"></div>
+        <div style="background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 12px; margin-top: 15px;">
+            <input type="text" id="chat-input" placeholder="說點什麼... (可用 ||隱藏文字||)" style="margin:0;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
+                <div style="display:flex; flex-direction: column; gap: 5px;">
+                    <input type="file" id="chat-file" style="font-size: 11px;">
+                    <label style="font-size: 12px; color: var(--fb-gray); cursor: pointer;">
+                        <input type="checkbox" id="chat-is-spoiler"> 標記為防雷內容 (Spoiler)
+                    </label>
+                </div>
+                <button id="btn-send-chat" class="btn-primary" style="width:70px; margin:0; padding:8px;" onclick="handleSendMessage()">傳送</button>
+            </div>
+        </div>
+    </div>
+
     <div id="page-profile" class="card">
         <h3 style="text-align:center;">個人檔案設定</h3>
         <div style="text-align:center; margin-bottom:15px;"><img id="p-img" src="https://via.placeholder.com/150" style="width:120px; height:120px; border-radius:50%; object-fit:cover;"></div>
-        <label style="font-size:12px; color:gray;">更換頭像：</label>
         <input type="file" id="avatar-file" accept="image/*">
-        <button onclick="handleAvatarUpload()" style="background:#f0f2f5; color:#4b4f56; margin-bottom:15px;">📁 上傳圖片至雲端</button>
-        <input type="text" id="username" placeholder="你的稱呼">
+        <button onclick="handleAvatarUpload()" style="background:#f0f2f5; color:#4b4f56; margin-bottom:15px;">📁 上傳頭像</button>
+        <input type="text" id="username" placeholder="你的稱呼" title="例如: vol.1">
         <textarea id="bio" rows="3" placeholder="自我介紹..."></textarea>
-        <button class="btn-primary" onclick="saveProfile()">儲存更新</button>
-        <button onclick="handleLogout()" style="background:none; color:#f02849; text-decoration:underline; font-size:14px;">登出帳號</button>
+        <button id="btn-save-profile" class="btn-primary" onclick="saveProfile()">儲存更新</button>
+        <button onclick="handleLogout()" style="color:#f02849; background:none; text-decoration:underline; font-size:14px;">登出帳號</button>
     </div>
 </div>
 
@@ -84,177 +137,295 @@
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg'; 
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: true } });
 
+    let currentUser = null;
+
     function showPage(p) {
         document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-        document.getElementById('page-' + p).classList.add('active');
+        const target = document.getElementById('page-' + p);
+        if(target) target.classList.add('active');
         if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
+        if(p === 'chat') { fetchMessages(); autoCleanup(); }
+        if(p === 'home') { fetchPosts(); }
     }
 
     supabaseClient.auth.onAuthStateChange((event, session) => {
         document.getElementById('loading-screen').style.display = 'none';
         if (session) {
+            currentUser = session.user;
             document.getElementById('main-nav').style.display = 'flex';
             showPage('home');
-            fetchPosts();
             loadUserInfo(session.user);
+            setupRealtime();
         } else {
             document.getElementById('main-nav').style.display = 'none';
             showPage('login');
         }
     });
 
-    function formatTime(ts) {
-        const date = new Date(ts);
-        return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    function revealImg(container) {
+        container.classList.add('revealed');
+        const img = container.querySelector('.spoiler-img');
+        if (img) {
+            img.classList.add('revealed');
+            img.style.filter = "none";
+        }
     }
 
-    async function fetchPosts() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        // 同時抓取貼文、留言以及「我點過哪些讚」
-        const { data: posts } = await supabaseClient
-            .from('posts')
-            .select('*, profiles(username, avatar_url), comments(*, profiles(username)), post_likes(user_id)')
-            .order('created_at', { ascending: false });
+    async function autoCleanup() {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const { data: old } = await supabaseClient.from('messages').select('file_url').lt('created_at', sevenDaysAgo.toISOString());
+        if (old && old.length > 0) {
+            const files = old.filter(m => m.file_url).map(m => m.file_url.split('/avatars/')[1]).filter(p => p);
+            if (files.length > 0) await supabaseClient.storage.from('avatars').remove(files);
+            await supabaseClient.from('messages').delete().lt('created_at', sevenDaysAgo.toISOString());
+        }
+    }
 
+    // --- 貼文與留言 ---
+    async function fetchPosts() {
+        const { data: posts } = await supabaseClient.from('posts').select('*, profiles(username, avatar_url), comments(*, profiles(username)), post_likes(user_id)').order('created_at', { ascending: false });
         const list = document.getElementById('posts-list');
         list.innerHTML = (posts || []).map(p => {
-            const isPostOwner = user && p.user_id === user.id;
+            const isPostOwner = currentUser && p.user_id === currentUser.id;
+            const hasLiked = currentUser && p.post_likes?.some(l => l.user_id === currentUser.id);
             const likesCount = p.likes || 0;
-            // 檢查當前用戶是否在該貼文的點讚名單中
-            const hasLiked = user && p.post_likes?.some(l => l.user_id === user.id);
-
-            const commentsHtml = (p.comments || []).map(c => {
-                const isCommentOwner = user && c.user_id === user.id;
-                const canDelete = isCommentOwner || isPostOwner;
+            
+            const commentsHtml = (p.comments || []).sort((a,b) => new Date(a.created_at) - new Date(b.created_at)).map(c => {
+                const isCommentOwner = currentUser && c.user_id === currentUser.id;
                 return `
-                    <div class="comment-item">
-                        <div style="display:flex; justify-content:space-between;">
-                            <div><span class="comment-user">${c.profiles?.username || '匿名'}:</span> <span id="comm-text-${c.id}">${c.content}</span><div style="font-size:10px; color:#999;">${formatTime(c.created_at)}</div></div>
-                            <div class="comment-actions">
-                                ${isCommentOwner ? `<button class="action-text-btn" onclick="startEditComment('${c.id}')">編輯</button>` : ''}
-                                ${canDelete ? `<button class="action-text-btn delete-text-btn" onclick="handleDeleteComment('${c.id}')">刪除</button>` : ''}
-                            </div>
-                        </div>
-                    </div>`;
+                <div class="comment-item">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="comment-user">${c.profiles?.username || '匿名'}:</span>
+                        ${isCommentOwner ? `<div>
+                            <span class="action-text-btn" onclick="handleEditComment('${c.id}', \`${c.content}\`)">編輯</span>
+                            <span class="action-text-btn" style="color:red;" onclick="handleDeleteComment('${c.id}')">刪除</span>
+                        </div>` : ''}
+                    </div>
+                    <span>${c.content}</span>
+                </div>`;
             }).join('');
 
             return `
                 <div class="post-card">
                     <div class="post-header">
                         <div class="post-author-info">
-                            <img src="${p.profiles?.avatar_url || 'https://via.placeholder.com/40'}" class="post-avatar">
-                            <div><b>${p.profiles?.username || '匿名'}</b><div class="post-time">${formatTime(p.created_at)}</div></div>
+                            <img src="${p.profiles?.avatar_url || 'https://via.placeholder.com/40'}" class="post-avatar" crossorigin="anonymous">
+                            <div><b>${p.profiles?.username || '匿名'}</b><div class="post-time">${formatTimeShort(p.created_at)}</div></div>
                         </div>
-                        <div class="comment-actions">
-                            ${isPostOwner ? `<button class="action-text-btn" onclick="startEditPost('${p.id}')">編輯</button>` : ''}
-                            ${isPostOwner ? `<button class="action-text-btn delete-text-btn" onclick="handleDeletePost('${p.id}')">刪除</button>` : ''}
-                        </div>
+                        ${isPostOwner ? `<div>
+                            <span class="action-text-btn" onclick="handleEditPost('${p.id}', \`${p.content}\`)">編輯</span>
+                            <span class="action-text-btn" style="color:red;" onclick="handleDeletePost('${p.id}')">刪除</span>
+                        </div>` : ''}
                     </div>
-                    <div class="post-content-text" id="post-text-${p.id}">${p.content}</div>
+                    <div class="post-content-text">${p.content}</div>
                     <div class="post-actions-bar">
                         <button class="like-btn ${hasLiked ? 'liked' : ''}" onclick="handleLike('${p.id}', ${likesCount}, ${hasLiked})">
-                            ${hasLiked ? '❤️' : '🤍'} <span id="like-count-${p.id}">${likesCount}</span> 讚
+                            ${hasLiked ? '❤️' : '🤍'} <span>${likesCount}</span> 讚
                         </button>
                     </div>
                     <div class="comment-section">
-                        <div id="comment-list-${p.id}">${commentsHtml || '<span style="color:#999; font-size:11px;">暫無留言</span>'}</div>
-                        <div class="comment-input-group">
-                            <input type="text" id="comment-in-${p.id}" class="comment-input" placeholder="寫下留言...">
-                            <button class="action-text-btn" style="color:var(--fb-blue); font-weight:bold;" onclick="handleSendComment('${p.id}')">傳送</button>
+                        ${commentsHtml}
+                        <div style="display:flex; margin-top:10px; gap:5px;">
+                            <input type="text" id="cmt-in-${p.id}" placeholder="留言..." style="margin:0; padding:6px; font-size:12px;">
+                            <button id="cmt-btn-${p.id}" onclick="handleComment('${p.id}')" class="btn-primary" style="width:60px; padding:0; margin:0; font-size:12px;">傳送</button>
                         </div>
                     </div>
                 </div>`;
         }).join('');
     }
 
-    async function handleLike(postId, currentLikes, hasLiked) {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return alert("請先登入");
+    async function handleCreatePost() {
+        const c = document.getElementById('post-content');
+        if(!c.value.trim()) return;
+        await supabaseClient.from('posts').insert([{ content: c.value, user_id: currentUser.id, likes: 0 }]);
+        c.value = ""; fetchPosts();
+    }
 
+    async function handleEditPost(id, old) {
+        const n = prompt("編輯貼文：", old);
+        if(n && n !== old) { await supabaseClient.from('posts').update({ content: n }).eq('id', id); fetchPosts(); }
+    }
+
+    async function handleDeletePost(id) {
+        if(confirm("確定刪除此貼文？")) { await supabaseClient.from('posts').delete().eq('id', id); fetchPosts(); }
+    }
+
+    async function handleComment(postId) {
+        const input = document.getElementById(`cmt-in-${postId}`);
+        if(!input.value.trim()) return;
+        await supabaseClient.from('comments').insert([{ content: input.value, user_id: currentUser.id, post_id: postId }]);
+        input.value = ""; fetchPosts();
+    }
+
+    async function handleEditComment(id, old) {
+        const n = prompt("編輯留言：", old);
+        if(n && n !== old) { await supabaseClient.from('comments').update({ content: n }).eq('id', id); fetchPosts(); }
+    }
+
+    async function handleDeleteComment(id) {
+        if(confirm("確定刪除此留言？")) { await supabaseClient.from('comments').delete().eq('id', id); fetchPosts(); }
+    }
+
+    async function handleLike(postId, currentLikes, hasLiked) {
         if (hasLiked) {
-            // 已點過讚 -> 收回讚
-            await supabaseClient.from('post_likes').delete().match({ user_id: user.id, post_id: postId });
+            await supabaseClient.from('post_likes').delete().match({ user_id: currentUser.id, post_id: postId });
             await supabaseClient.from('posts').update({ likes: Math.max(0, currentLikes - 1) }).eq('id', postId);
         } else {
-            // 未點過讚 -> 點讚
-            await supabaseClient.from('post_likes').insert([{ user_id: user.id, post_id: postId }]);
+            await supabaseClient.from('post_likes').insert([{ user_id: currentUser.id, post_id: postId }]);
             await supabaseClient.from('posts').update({ likes: currentLikes + 1 }).eq('id', postId);
         }
         fetchPosts();
     }
 
-    // --- 貼文、留言、檔案邏輯 (與先前相同，僅作防錯優化) ---
-    async function handleCreatePost() {
-        const content = document.getElementById('post-content').value.trim();
-        if (!content) return;
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        await supabaseClient.from('posts').insert([{ content, user_id: user.id, likes: 0 }]);
-        document.getElementById('post-content').value = ""; fetchPosts();
+    // --- 聊天室 ---
+    function setupRealtime() {
+        supabaseClient.channel('public-chat').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchMessages()).subscribe();
     }
 
-    function startEditPost(id) {
-        const el = document.getElementById(`post-text-${id}`); if (el.querySelector('textarea')) return;
-        const oldText = el.innerText; el.innerHTML = `<textarea id="edit-p-${id}" style="width:100%; min-height:80px;">${oldText}</textarea><div style="display:flex; gap:10px; margin-top:5px;"><button class="action-text-btn" style="color:var(--fb-blue); font-weight:bold;" onclick="saveEditPost('${id}')">儲存修改</button><button class="action-text-btn" onclick="fetchPosts()">取消</button></div>`;
+    async function fetchMessages() {
+        const { data: msgs } = await supabaseClient.from('messages').select('*, profiles(username)').order('created_at', { ascending: true });
+        const box = document.getElementById('chat-box');
+        box.innerHTML = (msgs || []).map(m => {
+            const isMe = currentUser && m.user_id === currentUser.id;
+            const contentHtml = parseSpoiler(m.content);
+            let fileHtml = '';
+            if (m.file_url) {
+                const isImage = m.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                if (isImage) {
+                    fileHtml = m.is_spoiler ? 
+                        `<div class="spoiler-img-container" onclick="revealImg(this)"><img src="${m.file_url}" class="spoiler-img" crossorigin="anonymous"><div class="spoiler-label">SPOILER (點擊解鎖)</div></div>` :
+                        `<img src="${m.file_url}" class="chat-file-preview" crossorigin="anonymous">`;
+                } else {
+                    fileHtml = `<a href="${m.file_url}" target="_blank" style="font-size:12px; color:var(--fb-blue); display:block; margin-top:5px;">📎 檢視附件</a>`;
+                }
+            }
+            return `
+                <div class="chat-msg ${isMe ? 'msg-me' : 'msg-other'}">
+                    <div class="msg-info">${m.profiles?.username || '匿名'} ${formatTimeOnly(m.created_at)}</div>
+                    <div id="chat-text-${m.id}">${contentHtml}</div>
+                    ${fileHtml}
+                    ${isMe ? `<div class="chat-actions"><span onclick="startEditMsg('${m.id}', '${m.content}')">編輯</span><span onclick="handleDeleteMsg('${m.id}')" style="color:#f02849;">刪除</span></div>` : ''}
+                </div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
     }
 
-    async function saveEditPost(id) {
-        const content = document.getElementById(`edit-p-${id}`).value.trim();
-        if (content) await supabaseClient.from('posts').update({ content }).eq('id', id); fetchPosts();
+    function parseSpoiler(text) {
+        if (!text) return "";
+        return text.replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
     }
 
-    async function handleSendComment(postId) {
-        const input = document.getElementById(`comment-in-${postId}`); const content = input.value.trim();
-        if (!content) return; const { data: { user } } = await supabaseClient.auth.getUser();
-        await supabaseClient.from('comments').insert([{ content, post_id: postId, user_id: user.id }]);
-        input.value = ""; fetchPosts();
+    // --- 結合後的「安全版」傳送函數 ---
+    async function handleSendMessage() {
+        const input = document.getElementById('chat-input');
+        const fileInput = document.getElementById('chat-file');
+        const spoilerCheck = document.getElementById('chat-is-spoiler');
+        const btn = document.getElementById('btn-send-chat');
+        let fileUrl = null;
+
+        if (!input.value.trim() && fileInput.files.length === 0) return;
+        btn.disabled = true;
+
+        try {
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                
+                // 安全處理：強制將檔名改為時間戳記，避免中文 InvalidKey 報錯
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+                const path = `chat/${fileName}`;
+
+                // 上傳
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('avatars')
+                    .upload(path, file);
+
+                if (uploadError) throw uploadError;
+
+                // 取得公開網址
+                const { data } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+                fileUrl = data.publicUrl;
+            }
+
+            // 存入資料表
+            const { error: insertError } = await supabaseClient.from('messages').insert([{ 
+                content: input.value, 
+                user_id: currentUser.id, 
+                file_url: fileUrl, 
+                is_spoiler: spoilerCheck.checked 
+            }]);
+
+            if (insertError) throw insertError;
+
+            // 清空與重新載入
+            input.value = ""; 
+            fileInput.value = ""; 
+            spoilerCheck.checked = false;
+            fetchMessages();
+
+        } catch (err) {
+            console.error("傳送失敗:", err);
+            alert("傳送失敗，請檢查網路或 Storage 設定");
+        } finally {
+            btn.disabled = false;
+        }
     }
 
-    function startEditComment(id) {
-        const el = document.getElementById(`comm-text-${id}`); if (el.querySelector('input')) return;
-        const oldText = el.innerText; el.dataset.original = oldText;
-        el.innerHTML = `<div style="display:inline-flex; gap:5px; width:80%; margin-top:5px;"><input type="text" id="edit-c-${id}" value="${oldText}" style="flex:1; font-size:12px; padding:2px;"><button class="action-text-btn" style="color:var(--fb-blue); font-weight:bold;" onclick="saveEditComment('${id}')">確定</button><button class="action-text-btn" onclick="cancelEditComment('${id}')">取消</button></div>`;
+    async function handleDeleteMsg(id) { if(confirm("刪除訊息？")) await supabaseClient.from('messages').delete().eq('id', id); }
+    function startEditMsg(id, old) {
+        const el = document.getElementById(`chat-text-${id}`);
+        el.innerHTML = `<input id="edit-msg-${id}" value="${old}" style="font-size:12px; width:80%; padding:4px;"><button class="action-text-btn" onclick="saveEditMsg('${id}')">儲存</button>`;
+    }
+    async function saveEditMsg(id) {
+        const val = document.getElementById(`edit-msg-${id}`).value;
+        await supabaseClient.from('messages').update({ content: val }).eq('id', id);
     }
 
-    async function saveEditComment(id) {
-        const content = document.getElementById(`edit-c-${id}`).value.trim();
-        if (content) await supabaseClient.from('comments').update({ content }).eq('id', id); fetchPosts();
-    }
-
-    function cancelEditComment(id) { document.getElementById(`comm-text-${id}`).innerText = document.getElementById(`comm-text-${id}`).dataset.original; }
-    async function handleDeletePost(id) { if(confirm("確定刪除貼文？")) { await supabaseClient.from('posts').delete().eq('id', id); fetchPosts(); } }
-    async function handleDeleteComment(id) { if(confirm("確定刪除留言？")) { await supabaseClient.from('comments').delete().eq('id', id); fetchPosts(); } }
+    // --- 其他功能 ---
+    function formatTimeShort(ts) { const d = new Date(ts); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
+    function formatTimeOnly(ts) { const d = new Date(ts); return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
+    
     async function loadUserInfo(user) {
         const { data: prof } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
         if (prof) {
-            document.getElementById('welcome-msg').innerText = `歡迎回來，${prof.username || '朋友'}！`;
+            document.getElementById('welcome-msg').innerText = `歡迎，${prof.username || '新朋友'}！`;
             document.getElementById('username').value = prof.username || "";
             document.getElementById('bio').value = prof.bio || "";
-            if (prof.avatar_url) document.getElementById('p-img').src = prof.avatar_url;
+            document.getElementById('p-img').src = prof.avatar_url || 'https://via.placeholder.com/150';
         }
     }
+
     async function handleAvatarUpload() {
-        const file = document.getElementById('avatar-file').files[0]; if(!file) return alert("請選圖片");
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const path = `${user.id}/avatar_${Date.now()}`;
+        const fileInput = document.getElementById('avatar-file');
+        const file = fileInput.files[0]; 
+        if(!file) return;
+
+        // 頭像也使用安全檔名
+        const fileExt = file.name.split('.').pop();
+        const path = `${currentUser.id}/avatar_${Date.now()}.${fileExt}`;
+
         await supabaseClient.storage.from('avatars').upload(path, file);
         const { data } = supabaseClient.storage.from('avatars').getPublicUrl(path);
-        document.getElementById('p-img').src = data.publicUrl; window.tempAvatarUrl = data.publicUrl;
+        document.getElementById('p-img').src = data.publicUrl; 
+        window.tempAvatarUrl = data.publicUrl;
     }
+
     async function saveProfile() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const up = { id: user.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value };
+        const up = { id: currentUser.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value };
         if (window.tempAvatarUrl) up.avatar_url = window.tempAvatarUrl;
-        await supabaseClient.from('profiles').upsert(up); alert("存檔成功！"); location.reload();
+        await supabaseClient.from('profiles').upsert(up); 
+        alert("儲存成功"); 
+        location.reload();
     }
-    async function handleLogin() {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
-        if (error) alert(error.message);
-    }
-    async function handleSignUp() {
-        const { error } = await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value });
-        if (error) alert(error.message); else alert("註冊成功！");
+
+    async function handleLogin() { await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }); }
+    async function handleSignUp() { 
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        await supabaseClient.auth.signUp({ email, password }); 
+        alert("註冊完畢，請嘗試登入"); toggleAuth('login');
     }
     function handleLogout() { supabaseClient.auth.signOut(); }
     function toggleAuth(t) { showPage(t); }
