@@ -14,13 +14,42 @@
         .container { display: flex; justify-content: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; display: none; }
         .card.active { display: block; }
+        
+        /* 統一輸入框與按鈕規格 */
+        input[type="text"], 
+        input[type="password"], 
+        input[type="email"], 
+        textarea { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border: 1px solid #dddfe2; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 15px;
+        }
+
+        .btn-primary { 
+            background: var(--fb-blue); 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 15px;
+            transition: background 0.2s;
+            margin-bottom: 5px;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+
         .post-card { background: #fff; border: 1px solid #dddfe2; border-radius: 12px; padding: 15px; margin-top: 15px; }
         .post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
         .post-image { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 450px; object-fit: contain; background: #f9f9f9; display: block; }
         .comment-area { background: #f0f2f5; border-radius: 12px; padding: 12px; margin-top: 10px; }
         
-        /* 1. 防雷文字/模糊 CSS */
         .spoiler { background: #333; color: #333; cursor: pointer; border-radius: 4px; padding: 0 4px; }
         .spoiler.revealed { background: rgba(0,0,0,0.1); color: inherit; }
         .spoiler-img-container { position: relative; cursor: pointer; overflow: hidden; border-radius: 8px; background: #000; margin-top: 5px; display: inline-block; }
@@ -29,7 +58,6 @@
         .spoiler-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 1.2em; pointer-events: none; transition: opacity 0.3s; }
         .spoiler-img-container.revealed .spoiler-label { opacity: 0; }
 
-        /* 2. 在線狀態小圓點 CSS */
         .avatar-wrapper { position: relative; display: inline-block; }
         .status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #bbb; transition: background 0.3s; }
         .status-dot.online { background: var(--fb-green); }
@@ -43,8 +71,6 @@
         .msg-me .bubble { background: var(--fb-blue); color: white; }
         .msg-other .bubble { background: #e4e6eb; color: black; }
         
-        input[type="text"], input[type="password"], textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 8px; box-sizing: border-box; }
-        .btn-primary { background: var(--fb-blue); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
         #user-action-menu { position: fixed; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1000; min-width: 160px; overflow: hidden; }
         .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; transition: background 0.2s; }
         .menu-item:hover { background: #f0f2f5; }
@@ -71,7 +97,7 @@
         <h2 style="text-align:center;">加入我們</h2>
         <input type="email" id="reg-email" placeholder="Email">
         <input type="password" id="reg-password" placeholder="設定密碼">
-        <button style="background:#42b72a; color:white;" class="btn-primary" onclick="handleSignUp()">註冊</button>
+        <button style="background:#42b72a;" class="btn-primary" onclick="handleSignUp()">註冊</button>
         <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('login')">返回登入</button>
     </div>
 
@@ -80,7 +106,7 @@
         <div style="background:#fff; border:1px solid #dddfe2; padding:15px; border-radius:12px;">
             <textarea id="post-content" rows="3" placeholder="分享新鮮事..."></textarea>
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:10px;">
-                <input type="file" id="post-file" accept="image/*" style="font-size:12px;">
+                <input type="file" id="post-file" accept="image/*" style="font-size:12px; width: auto;">
                 <button class="btn-primary" style="width:100px; margin:0;" onclick="handleCreatePost()">發佈</button>
             </div>
         </div>
@@ -95,7 +121,7 @@
             <input type="text" id="chat-input" placeholder="說點什麼... (可用 ||隱藏文字||)">
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:5px;">
                 <div style="font-size:11px;">
-                    <input type="file" id="chat-file" style="width:130px;"><br>
+                    <input type="file" id="chat-file" style="width:130px; margin:0;"><br>
                     <label style="cursor:pointer;"><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
                 </div>
                 <button class="btn-primary" style="width:80px; margin:0;" onclick="handleSendMessage()">傳送</button>
@@ -110,8 +136,8 @@
         </div>
         
         <div id="profile-edit-area">
-            <input type="file" id="avatar-file" accept="image/*" style="margin-bottom:10px;">
-            <button class="btn-primary" style="background:#8e8e8e; margin-bottom:15px;" onclick="handleAvatarUpload()">上傳新頭像</button>
+            <input type="file" id="avatar-file" accept="image/*">
+            <button class="btn-primary" style="background:#8e8e8e;" onclick="handleAvatarUpload()">上傳新頭像</button>
             <input type="text" id="username" placeholder="設定你的使用者名稱">
             <textarea id="bio" placeholder="自我介紹..." rows="4"></textarea>
             <button class="btn-primary" onclick="saveProfile()">儲存更新</button>
@@ -140,7 +166,7 @@
     let currentUser = null;
     let chatTarget = null;
     let viewingUserId = null;
-    let userPresence = {}; // 用於存儲在線清單
+    let userPresence = {};
 
     supabaseClient.auth.onAuthStateChange((ev, session) => {
         if (session) {
@@ -148,7 +174,7 @@
             document.getElementById('main-nav').style.display = 'flex';
             showPage('home');
             loadUserInfo();
-            setupPresence(); // 啟動在線偵測
+            setupPresence();
             setupRealtime();
         } else {
             document.getElementById('main-nav').style.display = 'none';
@@ -156,7 +182,6 @@
         }
     });
 
-    // 設置在線 Presence
     function setupPresence() {
         const channel = supabaseClient.channel('online-users');
         channel
@@ -308,7 +333,7 @@
         const listEl = document.getElementById('user-list');
         listEl.innerHTML = (users || []).map(u => {
             if (u.id === currentUser.id) return '';
-            const isOnline = userPresence[u.id]; // 判斷是否在線
+            const isOnline = userPresence[u.id];
             return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
                 <div class="avatar-wrapper">
                     <img src="${getImageUrl(u.avatar_url) || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/40'">
@@ -333,8 +358,6 @@
         box.innerHTML = (msgs || []).map(m => {
             const isMe = m.user_id === currentUser.id;
             const content = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
-            
-            // 修復防雷圖片邏輯：點擊容器時，文字與模糊同時處理
             let file = '';
             if(m.file_url) {
                 if(m.is_spoiler) {
@@ -346,7 +369,6 @@
                     file = `<img src="${getImageUrl(m.file_url)}" style="max-width:100%; border-radius:8px; margin-top:5px;">`;
                 }
             }
-
             return `
             <div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
                 <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" style="cursor:pointer" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
