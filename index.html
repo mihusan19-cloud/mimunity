@@ -6,7 +6,7 @@
     <title>mimunity</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-gray: #65676b; }
+        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-gray: #65676b; --fb-green: #31a24c; }
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--fb-bg); margin: 0; padding-bottom: 50px; color: #1c1e21; }
         nav { background: white; display: none; justify-content: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #ddd; }
         nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 30px; cursor: pointer; }
@@ -19,19 +19,30 @@
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
         .post-image { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 450px; object-fit: contain; background: #f9f9f9; display: block; }
         .comment-area { background: #f0f2f5; border-radius: 12px; padding: 12px; margin-top: 10px; }
+        
+        /* 1. 防雷文字/模糊 CSS */
         .spoiler { background: #333; color: #333; cursor: pointer; border-radius: 4px; padding: 0 4px; }
         .spoiler.revealed { background: rgba(0,0,0,0.1); color: inherit; }
-        .spoiler-img-container { position: relative; cursor: pointer; overflow: hidden; border-radius: 8px; background: #000; margin-top: 5px; }
-        .spoiler-img { filter: blur(40px); transition: filter 0.4s; max-width: 100%; opacity: 0.7; }
+        .spoiler-img-container { position: relative; cursor: pointer; overflow: hidden; border-radius: 8px; background: #000; margin-top: 5px; display: inline-block; }
+        .spoiler-img { filter: blur(40px); transition: filter 0.4s; max-width: 100%; opacity: 0.7; display: block; }
         .spoiler-img.revealed { filter: blur(0); opacity: 1; }
+        .spoiler-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 1.2em; pointer-events: none; transition: opacity 0.3s; }
+        .spoiler-img-container.revealed .spoiler-label { opacity: 0; }
+
+        /* 2. 在線狀態小圓點 CSS */
+        .avatar-wrapper { position: relative; display: inline-block; }
+        .status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #bbb; transition: background 0.3s; }
+        .status-dot.online { background: var(--fb-green); }
+
         #chat-box { height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 15px; background: #f9f9f9; border-radius: 12px; border: 1px solid #eee; }
         .msg-container { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; }
         .msg-me { align-self: flex-end; flex-direction: row-reverse; }
         .msg-other { align-self: flex-start; }
         .chat-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #eee; }
-        .bubble { padding: 10px 15px; border-radius: 18px; font-size: 14px; }
+        .bubble { padding: 10px 15px; border-radius: 18px; font-size: 14px; position: relative; }
         .msg-me .bubble { background: var(--fb-blue); color: white; }
         .msg-other .bubble { background: #e4e6eb; color: black; }
+        
         input[type="text"], input[type="password"], textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 8px; box-sizing: border-box; }
         .btn-primary { background: var(--fb-blue); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
         #user-action-menu { position: fixed; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1000; min-width: 160px; overflow: hidden; }
@@ -85,7 +96,7 @@
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:5px;">
                 <div style="font-size:11px;">
                     <input type="file" id="chat-file" style="width:130px;"><br>
-                    <label><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
+                    <label style="cursor:pointer;"><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
                 </div>
                 <button class="btn-primary" style="width:80px; margin:0;" onclick="handleSendMessage()">傳送</button>
             </div>
@@ -128,7 +139,8 @@
 
     let currentUser = null;
     let chatTarget = null;
-    let viewingUserId = null; // 新增：目前正在查看的用戶ID
+    let viewingUserId = null;
+    let userPresence = {}; // 用於存儲在線清單
 
     supabaseClient.auth.onAuthStateChange((ev, session) => {
         if (session) {
@@ -136,6 +148,7 @@
             document.getElementById('main-nav').style.display = 'flex';
             showPage('home');
             loadUserInfo();
+            setupPresence(); // 啟動在線偵測
             setupRealtime();
         } else {
             document.getElementById('main-nav').style.display = 'none';
@@ -143,15 +156,31 @@
         }
     });
 
+    // 設置在線 Presence
+    function setupPresence() {
+        const channel = supabaseClient.channel('online-users');
+        channel
+        .on('presence', { event: 'sync' }, () => {
+            const newState = channel.presenceState();
+            userPresence = {};
+            Object.values(newState).forEach(arr => {
+                arr.forEach(p => { userPresence[p.user_id] = true; });
+            });
+            fetchUserList();
+        })
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({ user_id: currentUser.id });
+            }
+        });
+    }
+
     async function showPage(p) {
-        // 重置查看狀態，除非是去 profile 頁面
         if (p !== 'profile') viewingUserId = null;
-        
         document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
-        
         if(p === 'home') fetchPosts();
         if(p === 'chat') { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
@@ -163,16 +192,8 @@
         menu.style.display = 'block';
         menu.style.top = e.pageY + 'px';
         menu.style.left = e.pageX + 'px';
-        
-        // 選單功能設定
-        document.getElementById('menu-view-profile').onclick = () => {
-            viewingUserId = userId;
-            showPage('profile');
-        };
-        document.getElementById('menu-start-chat').onclick = () => { 
-            chatTarget = userId; 
-            showPage('chat'); 
-        };
+        document.getElementById('menu-view-profile').onclick = () => { viewingUserId = userId; showPage('profile'); };
+        document.getElementById('menu-start-chat').onclick = () => { chatTarget = userId; showPage('chat'); };
     }
     
     function hideUserMenu() { document.getElementById('user-action-menu').style.display = 'none'; }
@@ -183,16 +204,12 @@
         return `${supabaseUrl}/storage/v1/object/public/avatars/${path}?t=${new Date().getTime()}`;
     }
 
-    // --- 載入個人檔案資料 (支援自己與他人) ---
     async function loadProfileData() {
         const idToFetch = viewingUserId || currentUser.id;
         const isSelf = idToFetch === currentUser.id;
-        
         const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', idToFetch).single();
         if (!profile) return;
-
         document.getElementById('p-img').src = getImageUrl(profile.avatar_url) || "https://via.placeholder.com/120";
-        
         if (isSelf) {
             document.getElementById('profile-display-title').innerText = "我的個人檔案";
             document.getElementById('profile-edit-area').style.display = "block";
@@ -205,10 +222,7 @@
             document.getElementById('profile-view-area').style.display = "block";
             document.getElementById('view-username').innerText = profile.username || "匿名";
             document.getElementById('view-bio').innerText = profile.bio || "這個人很懶，什麼都沒留下...";
-            document.getElementById('btn-quick-chat').onclick = () => {
-                chatTarget = idToFetch;
-                showPage('chat');
-            };
+            document.getElementById('btn-quick-chat').onclick = () => { chatTarget = idToFetch; showPage('chat'); };
         }
     }
 
@@ -257,22 +271,14 @@
         const content = document.getElementById('post-content').value.trim();
         const file = document.getElementById('post-file').files[0];
         if(!content && !file) return;
-
         let imageUrl = null;
         if(file) {
-            const fileExt = file.name.split('.').pop();
-            const safeFileName = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${fileExt}`;
-            const path = `posts/${safeFileName}`;
-            const { error: uploadError } = await supabaseClient.storage.from('avatars').upload(path, file);
-            if (!uploadError) imageUrl = path;
+            const path = `posts/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${file.name.split('.').pop()}`;
+            await supabaseClient.storage.from('avatars').upload(path, file);
+            imageUrl = path;
         }
-
-        const { error: insertError } = await supabaseClient.from('posts').insert([{ content, user_id: currentUser.id, image_url: imageUrl }]);
-        if(!insertError) {
-            document.getElementById('post-content').value = ""; 
-            document.getElementById('post-file').value = ""; 
-            fetchPosts();
-        }
+        await supabaseClient.from('posts').insert([{ content, user_id: currentUser.id, image_url: imageUrl }]);
+        document.getElementById('post-content').value = ""; document.getElementById('post-file').value = ""; fetchPosts();
     }
 
     async function handleLike(postId, count, hasLiked) {
@@ -302,8 +308,12 @@
         const listEl = document.getElementById('user-list');
         listEl.innerHTML = (users || []).map(u => {
             if (u.id === currentUser.id) return '';
+            const isOnline = userPresence[u.id]; // 判斷是否在線
             return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
-                <img src="${getImageUrl(u.avatar_url) || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/40'">
+                <div class="avatar-wrapper">
+                    <img src="${getImageUrl(u.avatar_url) || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/40'">
+                    <div class="status-dot ${isOnline ? 'online' : ''}"></div>
+                </div>
                 <div style="font-size:10px;">${u.username || '匿名'}</div>
             </div>`;
         }).join('');
@@ -323,9 +333,20 @@
         box.innerHTML = (msgs || []).map(m => {
             const isMe = m.user_id === currentUser.id;
             const content = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
-            const file = m.file_url ? (m.is_spoiler ? 
-                `<div class="spoiler-img-container" onclick="this.querySelector('img').classList.add('revealed')"><img src="${getImageUrl(m.file_url)}" class="spoiler-img"><div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-weight:bold;">防雷</div></div>` : 
-                `<img src="${getImageUrl(m.file_url)}" style="max-width:100%; border-radius:8px; margin-top:5px;">`) : '';
+            
+            // 修復防雷圖片邏輯：點擊容器時，文字與模糊同時處理
+            let file = '';
+            if(m.file_url) {
+                if(m.is_spoiler) {
+                    file = `<div class="spoiler-img-container" onclick="this.classList.add('revealed'); this.querySelector('img').classList.add('revealed')">
+                                <img src="${getImageUrl(m.file_url)}" class="spoiler-img">
+                                <div class="spoiler-label">防雷</div>
+                            </div>`;
+                } else {
+                    file = `<img src="${getImageUrl(m.file_url)}" style="max-width:100%; border-radius:8px; margin-top:5px;">`;
+                }
+            }
+
             return `
             <div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
                 <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" style="cursor:pointer" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
@@ -343,12 +364,10 @@
         const fileInput = document.getElementById('chat-file');
         const isSpoiler = document.getElementById('chat-is-spoiler').checked;
         if(!input.value.trim() && !fileInput.files[0]) return;
-
         let fileUrl = null;
         if(fileInput.files[0]) {
             const file = fileInput.files[0];
-            const safeFileName = `${Date.now()}_chat.${file.name.split('.').pop()}`;
-            const path = `chat/${safeFileName}`;
+            const path = `chat/${Date.now()}_chat.${file.name.split('.').pop()}`;
             await supabaseClient.storage.from('avatars').upload(path, file);
             fileUrl = path;
         }
@@ -364,9 +383,7 @@
 
     async function loadUserInfo() {
         const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
-        if(data) {
-            document.getElementById('welcome-msg').innerText = `嗨，${data.username || '使用者'}！`;
-        }
+        if(data) document.getElementById('welcome-msg').innerText = `嗨，${data.username || '使用者'}！`;
     }
 
     async function handleAvatarUpload() {
@@ -381,11 +398,7 @@
     }
 
     async function saveProfile() {
-        const { error } = await supabaseClient.from('profiles').upsert({ 
-            id: currentUser.id, 
-            username: document.getElementById('username').value, 
-            bio: document.getElementById('bio').value 
-        });
+        const { error } = await supabaseClient.from('profiles').upsert({ id: currentUser.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value });
         if(!error) { alert("儲存成功！"); loadProfileData(); }
     }
 
