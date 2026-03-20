@@ -3,6 +3,9 @@ self.addEventListener('install', (e) => {
   console.log('Service Worker: Installed');
 });
 
-self.addEventListener('fetch', (e) => {
-  // 必須有這個空監聽器才能觸發 PWA 安裝
+// sw.js 建議小改動
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });
