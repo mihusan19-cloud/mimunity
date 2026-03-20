@@ -1,6 +1,6 @@
 {
-  "name": "mimmunity",
-  "short_name": "mimmunity",
+  "name": "mimunity",
+  "short_name": "mimunity",
   "start_url": "./index.html",
   "display": "standalone",
   "icons": [
@@ -21,14 +21,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Mimmunity Desktop"
+      "label": "Mimunity Desktop"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Mimmunity Mobile"
+      "label": "Mimunity Mobile"
     }
   ]
 }
