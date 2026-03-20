@@ -1,22 +1,8 @@
-const CACHE_NAME = 'mimmunity-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  // 這裡放入你需要快取的其他路徑
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+// sw.js 內容
+self.addEventListener('install', (e) => {
+  console.log('Service Worker: Installed');
 });
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+self.addEventListener('fetch', (e) => {
+  // 必須有這個空監聽器才能觸發 PWA 安裝
 });
