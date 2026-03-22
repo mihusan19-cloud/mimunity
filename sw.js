@@ -41,12 +41,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 攔截請求：當沒網路時，從快取中提取檔案
+// ... 前面是 install 和 activate 事件 ...
+
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // 如果快取有，就直接給；沒有的話，才去聯網抓
-      return response || fetch(event.request);
-    })
-  );
-});
+    const url = new URL(event.request.url);
+
+    // ✨ 關鍵修改：如果是 API 請求 (例如 Supabase)，直接放行不處理
+    if (url.hostname.includes('supabase.co') || url.pathname.includes('/rest/v1/')) {
+        return; // 直接返回，交由瀏覽器正常處理
+    }
+
+    // 原本的快取處理邏輯 (處理 HTML, CSS, JS 等靜態資源)
+    event.respondWith(
+        caches.match(event.request).then((response) => {
+            return response || fetch(event.request);
+        })
+    );
+});;
