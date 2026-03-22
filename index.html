@@ -1,567 +1,927 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>mimunity</title>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <link rel="manifest" href="manifest.json">
+
     <meta name="theme-color" content="#1877f2">
+
     <link rel="apple-touch-icon" href="icon-192.png">
+
     <style>
+
         :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-gray: #65676b; --fb-green: #31a24c; }
+
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--fb-bg); margin: 0; padding-bottom: 50px; color: #1c1e21; }
-        nav { background: white; display: none; justify-content: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
-        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 20px; cursor: pointer; font-size: 14px; }
+
+        nav { background: white; display: none; justify-content: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #ddd; }
+
+        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 30px; cursor: pointer; }
+
         nav a.active { color: var(--fb-blue); border-bottom: 3px solid var(--fb-blue); background: #e7f3ff; }
+
         .container { display: flex; justify-content: center; padding: 20px; }
+
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; display: none; }
+
         .card.active { display: block; }
+
         
+
         input[type="text"], input[type="password"], input[type="email"], textarea { 
+
             width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dddfe2; border-radius: 8px; box-sizing: border-box; font-size: 15px;
+
         }
+
+
 
         .btn-primary { 
+
             background: var(--fb-blue); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px; transition: background 0.2s; margin-bottom: 5px;
+
         }
+
         .btn-primary:hover { opacity: 0.9; }
 
+
+
         .post-card { background: #fff; border: 1px solid #dddfe2; border-radius: 12px; padding: 15px; margin-top: 15px; overflow-wrap: anywhere; }
+
         .post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
+
         .post-image { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 450px; object-fit: contain; background: #f0f2f5; display: block; min-height: 100px; }
+
+        .comment-area { background: #f0f2f5; border-radius: 12px; padding: 12px; margin-top: 10px; }
+
+        .comment-item { overflow-wrap: anywhere; margin-bottom: 8px; font-size: 14px; }
+
         
-        .comment-area { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-        .comment-item { font-size: 13px; margin-bottom: 5px; background: #f0f2f5; padding: 8px; border-radius: 8px; }
 
         .auto-link { color: var(--fb-blue); text-decoration: none; word-break: break-all; overflow-wrap: anywhere; }
+
         .auto-link:hover { text-decoration: underline; }
 
-        /* 防雷功能樣式 */
+
+
         .spoiler { background: #333; color: #333; cursor: pointer; border-radius: 4px; padding: 0 4px; }
+
         .spoiler.revealed { background: rgba(0,0,0,0.1); color: inherit; }
-        .chat-image { width: 100%; max-width: 200px; border-radius: 8px; margin-top: 5px; cursor: pointer; display: block; }
-        .spoiler-img { filter: blur(25px) brightness(0.5); transition: filter 0.3s; }
-        .spoiler-img.revealed { filter: none; }
+
+        .spoiler-img-container { position: relative; cursor: pointer; overflow: hidden; border-radius: 8px; background: #000; margin-top: 5px; display: inline-block; }
+
+        .spoiler-img { filter: blur(40px); transition: filter 0.4s; max-width: 100%; opacity: 0.7; display: block; }
+
+        .spoiler-img.revealed { filter: blur(0); opacity: 1; }
+
+        .spoiler-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 1.2em; pointer-events: none; transition: opacity 0.3s; }
+
+        .spoiler-img-container.revealed .spoiler-label { opacity: 0; }
+
+
 
         .avatar-wrapper { position: relative; display: inline-block; }
+
         .status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #bbb; transition: background 0.3s; }
+
         .status-dot.online { background: var(--fb-green); }
 
+
+
         #chat-box { height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 15px; background: #f9f9f9; border-radius: 12px; border: 1px solid #eee; scroll-behavior: smooth; }
+
         .msg-container { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; }
+
         .msg-me { align-self: flex-end; flex-direction: row-reverse; }
+
         .msg-other { align-self: flex-start; }
+
         .chat-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #eee; }
+
         .bubble { padding: 10px 15px; border-radius: 18px; font-size: 14px; position: relative; overflow-wrap: anywhere; }
+
         .msg-me .bubble { background: var(--fb-blue); color: white; }
+
         .msg-other .bubble { background: #e4e6eb; color: black; }
+
         
+
         #user-action-menu { position: fixed; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1000; min-width: 160px; overflow: hidden; }
+
         .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; transition: background 0.2s; }
+
         .menu-item:hover { background: #f0f2f5; }
 
-        #game-area { border: 2px dashed #ddd; border-radius: 12px; padding: 20px; text-align: center; margin-top: 15px; background: #fff; }
-        .game-btn { background: var(--fb-green); color: white; border: none; padding: 15px; border-radius: 50%; width: 80px; height: 80px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 #237839; }
-        .game-btn:active { transform: translateY(4px); box-shadow: none; }
     </style>
+
 </head>
+
 <body onclick="hideUserMenu()">
 
+
+
 <nav id="main-nav">
+
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
+
     <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
-    <a onclick="showPage('game')" id="nav-game">🎮 遊戲小區</a>
+
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
+
 </nav>
 
+
+
 <div class="container">
+
     <div id="page-login" class="card active">
+
         <h2 style="text-align:center;">登入 mimunity</h2>
+
         <input type="email" id="login-email" placeholder="Email">
+
         <input type="password" id="login-password" placeholder="密碼">
+
         <button class="btn-primary" onclick="handleLogin()">登入</button>
+
         <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('register')">註冊帳號</button>
+
     </div>
+
+
 
     <div id="page-register" class="card">
+
         <h2 style="text-align:center;">加入我們</h2>
+
         <input type="email" id="reg-email" placeholder="Email">
+
         <input type="password" id="reg-password" placeholder="設定密碼">
+
         <button style="background:#42b72a;" class="btn-primary" onclick="handleSignUp()">註冊</button>
+
         <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('login')">返回登入</button>
+
     </div>
+
+
 
     <div id="page-home" class="card">
+
         <div id="welcome-msg" style="text-align:center; margin-bottom:15px; font-weight:bold; color:var(--fb-blue);"></div>
+
         <div style="background:#fff; border:1px solid #dddfe2; padding:15px; border-radius:12px;">
+
             <textarea id="post-content" rows="3" placeholder="分享新鮮事..."></textarea>
+
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:10px;">
+
                 <input type="file" id="post-file" accept="image/*" style="font-size:12px; width: auto;">
+
                 <button class="btn-primary" style="width:100px; margin:0;" onclick="handleCreatePost()">發佈</button>
+
             </div>
+
         </div>
+
         <div id="posts-list"></div>
+
     </div>
+
+
 
     <div id="page-chat" class="card">
+
         <h3 id="chat-title" style="margin:0 0 10px 0;">💬 聊天大廳</h3>
+
         <div id="user-list" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;"></div>
+
         <div id="chat-box"></div>
+
         <div style="margin-top:15px; background:#fff; padding:10px; border-radius:12px; border:1px solid #ddd;">
+
             <input type="text" id="chat-input" placeholder="說點什麼... (可用 ||隱藏文字||)">
+
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:5px;">
+
                 <div style="font-size:11px;">
-                    <input type="file" id="chat-file" accept="image/*" style="width:130px; margin:0;"><br>
+
+                    <input type="file" id="chat-file" style="width:130px; margin:0;"><br>
+
                     <label style="cursor:pointer;"><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
+
                 </div>
+
                 <button class="btn-primary" style="width:80px; margin:0;" onclick="handleSendMessage()">傳送</button>
+
             </div>
+
         </div>
+
     </div>
 
-    <div id="page-game" class="card">
-        <h2 style="text-align:center;">🎮 遊戲小區</h2>
-        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 16px; text-align: center;">
-            🏆 個人歷史最高分: <span id="game-highscore-display" style="font-weight: bold; color: #1877f2;">0</span>
-        </div>
-        
-        <div id="game-area">
-            <div id="game-status">準備好了嗎？</div>
-            <div id="game-timer" style="font-size: 24px; font-weight: bold; margin: 10px 0; color: var(--fb-blue);">10s</div>
-            <div id="game-score" style="font-size: 18px; margin-bottom: 15px;">得分: 0</div>
-            
-            <button id="game-main-btn" class="btn-primary" onclick="startGame()">開始遊戲</button>
-            <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">CLICK!</button>
-        </div>
-    </div>
+
 
     <div id="page-profile" class="card">
+
         <h2 id="profile-display-title" style="text-align:center;">個人檔案</h2>
+
         <div style="text-align:center; margin-bottom:20px;">
+
             <img id="p-img" src="" style="width:120px; height:120px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); object-fit:cover; background:#eee;">
+
         </div>
+
+        
+
         <div id="profile-edit-area">
+
             <input type="file" id="avatar-file" accept="image/*">
+
             <button class="btn-primary" style="background:#8e8e8e;" onclick="handleAvatarUpload()">上傳新頭像</button>
+
             <input type="text" id="username" placeholder="設定你的使用者名稱">
+
             <textarea id="bio" placeholder="自我介紹..." rows="4"></textarea>
+
             <button class="btn-primary" onclick="saveProfile()">儲存更新</button>
+
             <button onclick="handleLogout()" style="color:red; background:none; margin-top:20px; width:100%; font-weight:bold; cursor:pointer; border:none;">登出</button>
+
         </div>
+
+
+
         <div id="profile-view-area" style="display:none; text-align:center;">
+
             <h3 id="view-username" style="margin:5px 0;"></h3>
+
             <p id="view-bio" style="white-space:pre-wrap; color:var(--fb-gray); margin-bottom:20px;"></p>
+
             <button class="btn-primary" id="btn-quick-chat">💬 發送私訊</button>
+
             <button class="btn-primary" style="background:#8e8e8e; margin-top:10px;" onclick="showPage('home')">返回首頁</button>
+
         </div>
+
     </div>
+
 </div>
+
+
 
 <div id="user-action-menu">
+
     <div class="menu-item" id="menu-view-profile">👤 查看個人檔案</div>
+
     <div class="menu-item" id="menu-start-chat" style="color:var(--fb-blue); font-weight:bold;">💬 發送私訊</div>
+
 </div>
 
+
+
 <script>
+
     const supabaseUrl = 'https://tofcvucrwcyvbmkywtaf.supabase.co';
+
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg';
+
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
+
+
     let currentUser = null;
+
     let chatTarget = null;
+
     let viewingUserId = null;
+
     let userPresence = {};
 
-    let gameScore = 0;
-    let gameTimer = 10;
-    let gameInterval = null;
-    let isGameRunning = false;
 
-    // 輔助功能：連結化與獲取圖片網址
+
     function linkify(text) {
+
         if (!text) return "";
+
         const urlRegex = /(https?:\/\/[^\s]+)/g;
+
         return text.replace(urlRegex, function(url) {
+
             let displayUrl = url;
+
             try { displayUrl = decodeURIComponent(url); } catch(e) { displayUrl = url; }
+
             return `<a href="${url}" target="_blank" class="auto-link">${displayUrl}</a>`;
+
         });
+
     }
 
-    function getImageUrl(path) { 
-        if (!path) return null; 
-        return path.startsWith('http') ? path : `${supabaseUrl}/storage/v1/object/public/avatars/${path}`; 
-    }
 
-    // --- 認證與初始化 ---
+
     supabaseClient.auth.onAuthStateChange((ev, session) => {
+
         if (session) {
+
             currentUser = session.user;
+
             document.getElementById('main-nav').style.display = 'flex';
+
             showPage('home');
+
             loadUserInfo();
+
             setupPresence();
+
             setupRealtime();
+
         } else {
+
             document.getElementById('main-nav').style.display = 'none';
+
             showPage('login');
+
         }
+
     });
 
-    // --- 首頁貼文功能 ---
-    async function handleCreatePost() {
-        const content = document.getElementById('post-content').value;
-        const file = document.getElementById('post-file').files[0];
-        if(!content.trim() && !file) return;
 
-        let imageUrl = null;
-        if(file) {
-            const fileName = `post_${Date.now()}_${file.name}`;
-            const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
-            if(!error) imageUrl = fileName;
-        }
 
-        await supabaseClient.from('posts').insert([{ content, image_url: imageUrl, user_id: currentUser.id }]);
-        document.getElementById('post-content').value = "";
-        document.getElementById('post-file').value = "";
-        fetchPosts();
-    }
+    function setupPresence() {
 
-    async function fetchPosts() {
-        const { data: posts } = await supabaseClient.from('posts').select('*, profiles(username, avatar_url), post_likes(user_id), comments(*, profiles(username))').order('created_at', { ascending: false });
-        const list = document.getElementById('posts-list');
-        list.innerHTML = (posts || []).map(p => {
-            const isMe = p.user_id === currentUser.id;
-            const hasLiked = p.post_likes?.some(l => l.user_id === currentUser.id);
-            const commentsHtml = (p.comments || []).map(c => `
-                <div class="comment-item"><b>${c.profiles?.username || '匿名'}:</b> ${c.content}</div>
-            `).join('');
+        const channel = supabaseClient.channel('online-users');
 
-            return `<div class="post-card">
-                <div class="post-header">
-                    <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
-                        <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
-                        <b>${p.profiles?.username || '匿名'}</b>
-                    </div>
-                    ${isMe ? `<div>
-                        <button onclick="editPost('${p.id}', '${p.content.replace(/'/g, "\\'")}')" style="font-size:12px;">編輯</button>
-                        <button onclick="deletePost('${p.id}')" style="font-size:12px; color:red;">刪除</button>
-                    </div>` : ''}
-                </div>
-                <div style="white-space:pre-wrap;">${linkify(p.content)}</div>
-                ${p.image_url ? `<img src="${getImageUrl(p.image_url)}" class="post-image">` : ''}
-                <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
-                    <span style="cursor:pointer; color:${hasLiked ? '#1877f2':'#65676b'}" onclick="handleLike('${p.id}', ${p.likes||0}, ${hasLiked})">${hasLiked ? '❤️':'🤍'} ${p.likes||0}</span>
-                </div>
-                <div class="comment-area">
-                    <div id="comments-${p.id}">${commentsHtml}</div>
-                    <div style="display:flex; gap:5px; margin-top:5px;">
-                        <input type="text" id="comment-input-${p.id}" placeholder="寫下留言..." style="padding:5px; margin:0; font-size:12px;">
-                        <button onclick="handleComment('${p.id}')" style="font-size:12px; padding:0 10px;">送出</button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-    }
+        channel
 
-    async function handleLike(postId, currentLikes, hasLiked) {
-        if(hasLiked) {
-            await supabaseClient.from('post_likes').delete().match({ post_id: postId, user_id: currentUser.id });
-            await supabaseClient.from('posts').update({ likes: Math.max(0, currentLikes - 1) }).eq('id', postId);
-        } else {
-            await supabaseClient.from('post_likes').insert([{ post_id: postId, user_id: currentUser.id }]);
-            await supabaseClient.from('posts').update({ likes: currentLikes + 1 }).eq('id', postId);
-        }
-        fetchPosts();
-    }
+        .on('presence', { event: 'sync' }, () => {
 
-    async function handleComment(postId) {
-        const input = document.getElementById(`comment-input-${postId}`);
-        if(!input.value.trim()) return;
-        await supabaseClient.from('comments').insert([{ post_id: postId, user_id: currentUser.id, content: input.value }]);
-        input.value = "";
-        fetchPosts();
-    }
+            const newState = channel.presenceState();
 
-    async function editPost(postId, oldContent) {
-        const newContent = prompt("編輯你的貼文:", oldContent);
-        if(newContent !== null && newContent.trim() !== "") {
-            await supabaseClient.from('posts').update({ content: newContent }).eq('id', postId);
-            fetchPosts();
-        }
-    }
+            userPresence = {};
 
-    async function deletePost(postId) {
-        if(confirm("確定要刪除這則貼文嗎？")) {
-            await supabaseClient.from('posts').delete().eq('id', postId);
-            fetchPosts();
-        }
-    }
+            Object.values(newState).forEach(arr => {
 
-    // --- 聊天大廳功能 (修正：包含圖片與防雷) ---
-    async function fetchMessages() {
-        let query = supabaseClient.from('messages').select('*, profiles(username, avatar_url)');
-        if (chatTarget) {
-            const filter = `and(user_id.eq.${currentUser.id},receiver_id.eq.${chatTarget}),and(user_id.eq.${chatTarget},receiver_id.eq.${currentUser.id})`;
-            query = query.or(filter);
-            const { data: targetProfile } = await supabaseClient.from('profiles').select('username').eq('id', chatTarget).single();
-            document.getElementById('chat-title').innerHTML = `💬 與 ${targetProfile?.username || '用戶'} 私訊中 <button onclick="chatTarget=null;fetchMessages();" style="font-size:10px; cursor:pointer; background:none; border:1px solid #ddd; padding:2px 5px; border-radius:4px;">返回大廳</button>`;
-        } else {
-            query = query.is('receiver_id', null);
-            document.getElementById('chat-title').innerHTML = `💬 公共聊天大廳`;
-        }
+                arr.forEach(p => { userPresence[p.user_id] = true; });
 
-        const { data: msgs, error } = await query.order('created_at', { ascending: true });
-        if (error) return;
+            });
 
-        const box = document.getElementById('chat-box');
-        box.innerHTML = (msgs || []).map(m => {
-            const isMe = m.user_id === currentUser.id;
-            
-            // 文字防雷處理 ||text||
-            let textContent = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
-            textContent = linkify(textContent);
+            fetchUserList();
 
-            // 圖片防雷與顯示處理
-            let imageHtml = "";
-            if (m.image_url) {
-                const fullImgUrl = getImageUrl(m.image_url);
-                if (m.is_spoiler) {
-                    imageHtml = `<img src="${fullImgUrl}" class="chat-image spoiler-img" onclick="this.classList.toggle('revealed')" title="點擊解除防雷模糊">`;
-                } else {
-                    imageHtml = `<img src="${fullImgUrl}" class="chat-image" onclick="window.open('${fullImgUrl}')">`;
-                }
+        })
+
+        .subscribe(async (status) => {
+
+            if (status === 'SUBSCRIBED') {
+
+                await channel.track({ user_id: currentUser.id });
+
             }
 
-            return `<div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
-                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
-                <div class="bubble">
-                    <div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${m.profiles?.username}</div>
-                    <div>${textContent}</div>
-                    ${imageHtml}
-                </div>
-            </div>`;
-        }).join('');
-        scrollToBottom();
+        });
+
     }
 
-    async function handleSendMessage() {
-        const input = document.getElementById('chat-input');
-        const fileInput = document.getElementById('chat-file');
-        const isSpoiler = document.getElementById('chat-is-spoiler').checked;
-        
-        let content = input.value.trim();
-        let file = fileInput.files[0];
-        
+
+
+    async function showPage(p) {
+
+        if (p !== 'profile') viewingUserId = null;
+
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+
+        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+
+        const targetPage = document.getElementById('page-' + p);
+
+        targetPage.classList.add('active');
+
+        if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
+
+        if(p === 'home' && document.getElementById('posts-list').innerHTML === "") fetchPosts();
+
+        if(p === 'chat' && document.getElementById('chat-box').innerHTML === "") { fetchUserList(); fetchMessages(); }
+
+        if(p === 'profile') loadProfileData();
+
+    }
+
+
+
+    function showUserMenu(e, userId) {
+
+        e.stopPropagation();
+
+        const menu = document.getElementById('user-action-menu');
+
+        menu.style.display = 'block';
+
+        menu.style.top = e.pageY + 'px';
+
+        menu.style.left = e.pageX + 'px';
+
+        document.getElementById('menu-view-profile').onclick = () => { viewingUserId = userId; showPage('profile'); };
+
+        document.getElementById('menu-start-chat').onclick = () => { chatTarget = userId; showPage('chat'); };
+
+    }
+
+    
+
+    function hideUserMenu() { document.getElementById('user-action-menu').style.display = 'none'; }
+
+
+
+    function getImageUrl(path, forceRefresh = false) {
+
+        if (!path) return null;
+
+        if (path.startsWith('http')) return path;
+
+        const url = `${supabaseUrl}/storage/v1/object/public/avatars/${path}`;
+
+        return forceRefresh ? `${url}?t=${Date.now()}` : url;
+
+    }
+
+
+
+    async function loadProfileData() {
+
+        const idToFetch = viewingUserId || currentUser.id;
+
+        const isSelf = idToFetch === currentUser.id;
+
+        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', idToFetch).single();
+
+        if (!profile) return;
+
+        document.getElementById('p-img').src = getImageUrl(profile.avatar_url) || "https://via.placeholder.com/120";
+
+        if (isSelf) {
+
+            document.getElementById('profile-display-title').innerText = "我的個人檔案";
+
+            document.getElementById('profile-edit-area').style.display = "block";
+
+            document.getElementById('profile-view-area').style.display = "none";
+
+            document.getElementById('username').value = profile.username || "";
+
+            document.getElementById('bio').value = profile.bio || "";
+
+        } else {
+
+            document.getElementById('profile-display-title').innerText = `${profile.username || '用戶'} 的檔案`;
+
+            document.getElementById('profile-edit-area').style.display = "none";
+
+            document.getElementById('profile-view-area').style.display = "block";
+
+            document.getElementById('view-username').innerText = profile.username || "匿名";
+
+            document.getElementById('view-bio').innerHTML = linkify(profile.bio) || "這個人很懶，什麼都沒留下...";
+
+            document.getElementById('btn-quick-chat').onclick = () => { chatTarget = idToFetch; showPage('chat'); };
+
+        }
+
+    }
+
+
+
+    async function fetchPosts() {
+
+        const { data: posts } = await supabaseClient.from('posts').select('*, profiles(username, avatar_url), post_likes(user_id), comments(*, profiles(username))').order('created_at', { ascending: false });
+
+        const list = document.getElementById('posts-list');
+
+        list.innerHTML = (posts || []).map(p => {
+
+            const hasLiked = p.post_likes?.some(l => l.user_id === currentUser.id);
+
+            const postImg = getImageUrl(p.image_url);
+
+            const postContent = linkify(p.content);
+
+            return `
+
+                <div class="post-card">
+
+                    <div class="post-header">
+
+                        <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
+
+                            <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
+
+                            <b>${p.profiles?.username || '匿名'}</b>
+
+                        </div>
+
+                        ${currentUser.id === p.user_id ? `<div>
+
+                            <span style="color:blue; cursor:pointer; font-size:12px; margin-right:10px;" onclick="editPost('${p.id}', \`${p.content}\`)">編輯</span>
+
+                            <span style="color:red; cursor:pointer; font-size:12px;" onclick="deletePost('${p.id}')">刪除</span>
+
+                        </div>` : ''}
+
+                    </div>
+
+                    <div style="white-space:pre-wrap;">${postContent}</div>
+
+                    ${postImg ? `<img src="${postImg}" class="post-image" loading="lazy" onerror="this.style.display='none'">` : ''}
+
+                    <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+
+                        <span style="cursor:pointer; color:${hasLiked ? '#1877f2':'#65676b'}" onclick="handleLike('${p.id}', ${p.likes||0}, ${hasLiked})">
+
+                            ${hasLiked ? '❤️':'🤍'} ${p.likes||0}
+
+                        </span>
+
+                    </div>
+
+                    <div class="comment-area">
+
+                        ${(p.comments || []).map(c => `
+
+                            <div class="comment-item">
+
+                                <b>${c.profiles?.username}:</b> ${linkify(c.content)}
+
+                                ${currentUser.id === c.user_id ? `
+
+                                    <span style="color:blue; font-size:10px; cursor:pointer; margin-left:10px;" onclick="editComment('${c.id}', \`${c.content}\`)">編輯</span>
+
+                                    <span style="color:red; font-size:10px; cursor:pointer; margin-left:5px;" onclick="deleteComment('${c.id}')">刪除</span>
+
+                                ` : ''}
+
+                            </div>
+
+                        `).join('')}
+
+                        <div style="display:flex; gap:5px; margin-top:10px;">
+
+                            <input type="text" id="comment-in-${p.id}" placeholder="寫留言..." style="padding:8px; margin:0; font-size:12px;">
+
+                            <button style="width:50px; padding:5px; font-size:11px; background:var(--fb-blue); color:white; border-radius:5px; border:none;" onclick="addComment('${p.id}')">送出</button>
+
+                        </div>
+
+                    </div>
+
+                </div>`;
+
+        }).join('');
+
+    }
+
+
+
+    async function handleCreatePost() {
+
+        const content = document.getElementById('post-content').value.trim();
+
+        const file = document.getElementById('post-file').files[0];
+
         if(!content && !file) return;
 
         let imageUrl = null;
+
         if(file) {
-            const fileName = `chat_${Date.now()}_${file.name}`;
-            const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
-            if(!error) imageUrl = fileName;
+
+            const path = `posts/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${file.name.split('.').pop()}`;
+
+            await supabaseClient.storage.from('avatars').upload(path, file);
+
+            imageUrl = path;
+
         }
 
-        await supabaseClient.from('messages').insert([{ 
-            content: content, 
-            user_id: currentUser.id, 
-            receiver_id: chatTarget,
-            image_url: imageUrl,
-            is_spoiler: isSpoiler
-        }]);
+        await supabaseClient.from('posts').insert([{ content, user_id: currentUser.id, image_url: imageUrl }]);
 
-        input.value = "";
-        fileInput.value = "";
-        document.getElementById('chat-is-spoiler').checked = false;
-        fetchMessages();
+        document.getElementById('post-content').value = ""; document.getElementById('post-file').value = ""; fetchPosts();
+
     }
 
-    // --- 遊戲邏輯 ---
-    async function refreshGameData() {
-        loadLocalHighScore(); 
-        if (currentUser) {
-            const { data } = await supabaseClient.from('game_scores').select('score').eq('user_id', currentUser.id).maybeSingle();
-            const cloudScore = data ? data.score : 0;
-            const localScore = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
-            if (cloudScore > localScore) {
-                localStorage.setItem('mimunity_game_highscore', cloudScore);
-                loadLocalHighScore();
+
+
+    async function handleLike(postId, count, hasLiked) {
+
+        try {
+
+            if (hasLiked) {
+
+                await supabaseClient.from('post_likes').delete().match({ user_id: currentUser.id, post_id: postId });
+
+                await supabaseClient.from('posts').update({ likes: Math.max(0, count - 1) }).eq('id', postId);
+
+            } else {
+
+                await supabaseClient.from('post_likes').insert([{ user_id: currentUser.id, post_id: postId }]);
+
+                await supabaseClient.from('posts').update({ likes: count + 1 }).eq('id', postId);
+
             }
+
+            await fetchPosts(); 
+
+        } catch (err) {
+
+            console.error("點讚發生錯誤:", err);
+
         }
+
     }
 
-    function loadLocalHighScore() {
-        const saved = localStorage.getItem('mimunity_game_highscore') || 0;
-        const el = document.getElementById('game-highscore-display');
-        if(el) el.innerText = saved;
+
+
+    async function addComment(postId) {
+
+        const val = document.getElementById(`comment-in-${postId}`).value.trim();
+
+        if(!val) return;
+
+        await supabaseClient.from('comments').insert([{ post_id: postId, user_id: currentUser.id, content: val }]);
+
+        fetchPosts();
+
     }
 
-    function startGame() {
-        if(isGameRunning) return;
-        isGameRunning = true;
-        gameScore = 0;
-        gameTimer = 10;
-        document.getElementById('game-score').innerText = "得分: 0";
-        document.getElementById('game-status').innerText = "衝啊！！";
-        document.getElementById('game-main-btn').style.display = "none";
-        document.getElementById('game-click-btn').style.display = "inline-block";
-        gameInterval = setInterval(() => {
-            gameTimer--;
-            document.getElementById('game-timer').innerText = gameTimer + "s";
-            if(gameTimer <= 0) endGame();
-        }, 1000);
+
+
+    async function deletePost(id) { if(confirm("刪除貼文？")) { await supabaseClient.from('posts').delete().eq('id', id); fetchPosts(); } }
+
+    async function deleteComment(id) { if(confirm("刪除留言？")) { await supabaseClient.from('comments').delete().eq('id', id); fetchPosts(); } }
+
+    
+
+    async function editPost(id, old) { 
+
+        const n = prompt("編輯貼文：", old); 
+
+        if(n !== null && n.trim() !== "") { 
+
+            await supabaseClient.from('posts').update({ content: n.trim() }).eq('id', id); 
+
+            fetchPosts(); 
+
+        } 
+
     }
 
-    function hitGame() {
-        if(!isGameRunning) return;
-        gameScore++;
-        document.getElementById('game-score').innerText = "得分: " + gameScore;
+
+
+    async function editComment(id, oldContent) {
+
+        const newContent = prompt("編輯留言：", oldContent);
+
+        if (newContent !== null && newContent.trim() !== "") {
+
+            const { error } = await supabaseClient.from('comments').update({ content: newContent.trim() }).eq('id', id);
+
+            if (!error) { fetchPosts(); } else { alert("編輯失敗！"); }
+
+        }
+
     }
 
-    async function endGame() {
-        clearInterval(gameInterval);
-        isGameRunning = false;
-        document.getElementById('game-status').innerText = "時間到！";
-        document.getElementById('game-main-btn').style.display = "block";
-        document.getElementById('game-click-btn').style.display = "none";
-        const localHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
-        if(gameScore > localHigh) {
-            localStorage.setItem('mimunity_game_highscore', gameScore);
-            loadLocalHighScore();
-            alert("新個人紀錄！" + gameScore + " 分");
-            await syncGameScore(gameScore);
+
+
+    async function fetchUserList() {
+
+        const { data: users } = await supabaseClient.from('profiles').select('id, username, avatar_url');
+
+        const listEl = document.getElementById('user-list');
+
+        listEl.innerHTML = (users || []).map(u => {
+
+            if (u.id === currentUser.id) return '';
+
+            const isOnline = userPresence[u.id];
+
+            return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
+
+                <div class="avatar-wrapper">
+
+                    <img src="${getImageUrl(u.avatar_url) || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/40'">
+
+                    <div class="status-dot ${isOnline ? 'online' : ''}"></div>
+
+                </div>
+
+                <div style="font-size:10px;">${u.username || '匿名'}</div>
+
+            </div>`;
+
+        }).join('');
+
+    }
+
+
+
+    async function fetchMessages() {
+
+        let query = supabaseClient.from('messages').select('*, profiles(username, avatar_url)');
+
+        if (chatTarget) {
+
+            query = query.or(`and(user_id.eq.${currentUser.id},receiver_id.eq.${chatTarget}),and(user_id.eq.${chatTarget},receiver_id.eq.${currentUser.id})`);
+
+            document.getElementById('chat-title').innerHTML = `💬 私訊中 <button onclick="chatTarget=null;fetchMessages();" style="font-size:10px; cursor:pointer; background:none; border:1px solid #ddd; padding:2px 5px; border-radius:4px;">返回大廳</button>`;
+
         } else {
-            refreshGameData();
+
+            query = query.is('receiver_id', null);
+
+            document.getElementById('chat-title').innerHTML = `💬 公共聊天大廳`;
+
         }
+
+        const { data: msgs } = await query.order('created_at', { ascending: true });
+
+        const box = document.getElementById('chat-box');
+
+        box.innerHTML = (msgs || []).map(m => {
+
+            const isMe = m.user_id === currentUser.id;
+
+            let content = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
+
+            content = linkify(content);
+
+            let file = '';
+
+            if(m.file_url) {
+
+                const imgUrl = getImageUrl(m.file_url);
+
+                file = m.is_spoiler ? 
+
+                    `<div class="spoiler-img-container" onclick="this.classList.add('revealed'); this.querySelector('img').classList.add('revealed')">
+
+                        <img src="${imgUrl}" class="spoiler-img" onload="scrollToBottom()">
+
+                        <div class="spoiler-label">防雷</div>
+
+                    </div>` : `<img src="${imgUrl}" style="max-width:100%; border-radius:8px; margin-top:5px;" loading="lazy" onload="scrollToBottom()">`;
+
+            }
+
+            return `<div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
+
+                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" style="cursor:pointer" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
+
+                <div class="bubble"><div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${m.profiles?.username}</div><div>${content}</div>${file}</div>
+
+            </div>`;
+
+        }).join('');
+
+        scrollToBottom();
+
     }
 
-    async function syncGameScore(score) {
-        if (!navigator.onLine || !currentUser) return;
-        const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', currentUser.id).single();
-        await supabaseClient.from('game_scores').upsert({ 
-            user_id: currentUser.id, 
-            username: profile?.username || '匿名玩家', 
-            score: parseInt(score)
-        }, { onConflict: 'user_id' });
+
+
+    function scrollToBottom() {
+
+        const box = document.getElementById('chat-box');
+
+        if (box) { requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; }); }
+
     }
 
-    // --- 基礎認證與選單 ---
-    async function handleLogin() {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if(error) alert("登入失敗: " + error.message);
+
+
+    async function handleSendMessage() {
+
+        const input = document.getElementById('chat-input');
+
+        const fileInput = document.getElementById('chat-file');
+
+        const isSpoiler = document.getElementById('chat-is-spoiler').checked;
+
+        if(!input.value.trim() && !fileInput.files[0]) return;
+
+        let fileUrl = null;
+
+        if(fileInput.files[0]) {
+
+            const file = fileInput.files[0];
+
+            const path = `chat/${Date.now()}_chat.${file.name.split('.').pop()}`;
+
+            await supabaseClient.storage.from('avatars').upload(path, file);
+
+            fileUrl = path;
+
+        }
+
+        await supabaseClient.from('messages').insert([{ content: input.value, user_id: currentUser.id, receiver_id: chatTarget, file_url: fileUrl, is_spoiler: isSpoiler }]);
+
+        input.value = ""; fileInput.value = ""; document.getElementById('chat-is-spoiler').checked = false; fetchMessages();
+
     }
 
-    async function handleSignUp() {
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
-        const { error } = await supabaseClient.auth.signUp({ email, password });
-        if(error) alert("註冊失敗: " + error.message); else alert("註冊成功，請登入！");
+
+
+    function setupRealtime() {
+
+        supabaseClient.channel('any')
+
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchMessages())
+
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
+
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchPosts())
+
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => fetchPosts())
+
+            .subscribe();
+
     }
+
+
+
+    async function loadUserInfo() {
+
+        const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+
+        if(data) document.getElementById('welcome-msg').innerText = `嗨，${data.username || '使用者'}！`;
+
+    }
+
+
+
+    async function handleAvatarUpload() {
+
+        const file = document.getElementById('avatar-file').files[0];
+
+        if(!file) return;
+
+        const path = `avatars/${currentUser.id}_${Date.now()}.${file.name.split('.').pop()}`;
+
+        const { error } = await supabaseClient.storage.from('avatars').upload(path, file);
+
+        if(!error) {
+
+            await supabaseClient.from('profiles').update({ avatar_url: path }).eq('id', currentUser.id);
+
+            const { data } = await supabaseClient.from('profiles').select('avatar_url').eq('id', currentUser.id).single();
+
+            document.getElementById('p-img').src = getImageUrl(data.avatar_url, true);
+
+        }
+
+    }
+
+
+
+    async function saveProfile() {
+
+        const { error } = await supabaseClient.from('profiles').upsert({ id: currentUser.id, username: document.getElementById('username').value, bio: document.getElementById('bio').value });
+
+        if(!error) { alert("儲存成功！"); loadProfileData(); }
+
+    }
+
+
+
+    async function handleLogin() { await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }); }
+
+    async function handleSignUp() { await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value }); alert("請收信！"); }
 
     async function handleLogout() { await supabaseClient.auth.signOut(); }
 
-    async function loadUserInfo() {
-        const { data } = await supabaseClient.from('profiles').select('username').eq('id', currentUser.id).single();
-        document.getElementById('welcome-msg').innerText = `早安, ${data?.username || '朋友'}！`;
+
+
+    // 註冊 PWA Service Worker
+
+    if ('serviceWorker' in navigator) {
+
+        navigator.serviceWorker.register('sw.js')
+
+        .then(() => console.log("Service Worker 註冊成功"));
+
     }
 
-    function setupRealtime() {
-        supabaseClient.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, fetchMessages).subscribe();
-        supabaseClient.channel('posts').on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchPosts).subscribe();
-    }
-
-    async function showPage(p) {
-        if (p !== 'profile') viewingUserId = null;
-        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-        document.getElementById('page-' + p).classList.add('active');
-        if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
-        
-        if(p === 'home') fetchPosts();
-        if(p === 'chat') { fetchUserList(); fetchMessages(); }
-        if(p === 'profile') loadProfileData();
-        if(p === 'game') refreshGameData();
-    }
-
-    function scrollToBottom() { const box = document.getElementById('chat-box'); if (box) box.scrollTop = box.scrollHeight; }
-    function hideUserMenu() { document.getElementById('user-action-menu').style.display = 'none'; }
-    function showUserMenu(e, userId) {
-        e.stopPropagation();
-        const menu = document.getElementById('user-action-menu');
-        menu.style.display = 'block'; menu.style.top = e.pageY + 'px'; menu.style.left = e.pageX + 'px';
-        document.getElementById('menu-view-profile').onclick = () => { viewingUserId = userId; showPage('profile'); };
-        document.getElementById('menu-start-chat').onclick = () => { chatTarget = userId; showPage('chat'); };
-    }
-
-    async function fetchUserList() {
-        const { data: users } = await supabaseClient.from('profiles').select('id, username, avatar_url');
-        const listEl = document.getElementById('user-list');
-        listEl.innerHTML = (users || []).map(u => {
-            if (u.id === currentUser.id) return '';
-            const isOnline = userPresence[u.id];
-            return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
-                <div class="avatar-wrapper">
-                    <img src="${getImageUrl(u.avatar_url) || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" onerror="this.src='https://via.placeholder.com/40'">
-                    <div class="status-dot ${isOnline ? 'online' : ''}"></div>
-                </div>
-                <div style="font-size:10px;">${u.username || '匿名'}</div>
-            </div>`;
-        }).join('');
-    }
-
-    function setupPresence() {
-        const channel = supabaseClient.channel('online-users');
-        channel.on('presence', { event: 'sync' }, () => {
-            const newState = channel.presenceState();
-            userPresence = {};
-            Object.values(newState).forEach(arr => arr.forEach(p => { userPresence[p.user_id] = true; }));
-            fetchUserList();
-        }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await channel.track({ user_id: currentUser.id }); });
-    }
-
-    // --- 個人檔案與上傳 ---
-    async function loadProfileData() {
-        const id = viewingUserId || currentUser.id;
-        const { data } = await supabaseClient.from('profiles').select('*').eq('id', id).single();
-        if (viewingUserId && viewingUserId !== currentUser.id) {
-            document.getElementById('profile-edit-area').style.display = 'none';
-            document.getElementById('profile-view-area').style.display = 'block';
-            document.getElementById('view-username').innerText = data?.username || '匿名用戶';
-            document.getElementById('view-bio').innerText = data?.bio || '這傢伙很懶，什麼都沒留下。';
-            document.getElementById('p-img').src = getImageUrl(data?.avatar_url) || 'https://via.placeholder.com/120';
-            document.getElementById('btn-quick-chat').onclick = () => { chatTarget = id; showPage('chat'); };
-        } else {
-            document.getElementById('profile-edit-area').style.display = 'block';
-            document.getElementById('profile-view-area').style.display = 'none';
-            document.getElementById('username').value = data?.username || '';
-            document.getElementById('bio').value = data?.bio || '';
-            document.getElementById('p-img').src = getImageUrl(data?.avatar_url) || 'https://via.placeholder.com/120';
-        }
-    }
-
-    async function saveProfile() {
-        const username = document.getElementById('username').value;
-        const bio = document.getElementById('bio').value;
-        await supabaseClient.from('profiles').upsert({ id: currentUser.id, username, bio });
-        alert("資料已更新！");
-        loadUserInfo();
-    }
-
-    async function handleAvatarUpload() {
-        const file = document.getElementById('avatar-file').files[0];
-        if(!file) return;
-        const fileName = `${currentUser.id}_avatar_${Date.now()}`;
-        const { error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
-        if(!error) {
-            await supabaseClient.from('profiles').update({ avatar_url: fileName }).eq('id', currentUser.id);
-            alert("頭像上傳成功！");
-            loadProfileData();
-        }
-    }
 </script>
+
 </body>
+
 </html>
