@@ -64,7 +64,13 @@
 
         /* 遊戲區域專用樣式 */
         #game-area { border: 2px dashed #ddd; border-radius: 12px; padding: 20px; text-align: center; margin-top: 15px; background: #fff; }
-        .game-btn { background: var(--fb-green); color: white; border: none; padding: 15px; border-radius: 50%; width: 80px; height: 80px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 #237839; active: transform: translateY(4px); active: box-shadow: none; }
+        .game-btn { background: var(--fb-green); color: white; border: none; padding: 15px; border-radius: 50%; width: 80px; height: 80px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 #237839; }
+        .game-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 排行榜樣式 */
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 14px; align-items: center; }
+        .leaderboard-item:last-child { border-bottom: none; }
+        .rank-num { font-weight: bold; width: 25px; color: var(--fb-gray); }
     </style>
 </head>
 <body onclick="hideUserMenu()">
@@ -136,10 +142,17 @@
             <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">CLICK!</button>
         </div>
 
+        <div id="leaderboard-section" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
+            <h4 style="text-align: center; color: var(--fb-blue); margin-bottom: 10px;">🌍 全球排行榜 (Top 5)</h4>
+            <div id="leaderboard-list" style="background: #f9f9f9; border-radius: 8px; padding: 5px;">
+                載入排名中...
+            </div>
+        </div>
+
         <div style="margin-top: 20px;">
             <h4>多人模式 (開發中)</h4>
             <button class="btn-primary" style="background: #8e8e8e; cursor: not-allowed;">👥 與朋友對戰</button>
-            <p style="font-size: 11px; color: gray;">* 多人模式需要網路連線。單人模式支援離線遊玩。</p>
+            <p style="font-size: 11px; color: gray;">* 排行榜與同步需要網路連線。單人模式支援離線遊玩。</p>
         </div>
     </div>
 
@@ -206,14 +219,14 @@
             loadUserInfo();
             setupPresence();
             setupRealtime();
-            loadLocalHighScore(); // 載入本地分數
+            loadLocalHighScore();
         } else {
             document.getElementById('main-nav').style.display = 'none';
             showPage('login');
         }
     });
 
-    // --- 遊戲功能函數 ---
+    // --- 遊戲功能函數 (包含排行榜邏輯) ---
     function loadLocalHighScore() {
         const saved = localStorage.getItem('mimunity_game_highscore') || 0;
         document.getElementById('game-highscore-display').innerText = saved;
@@ -250,36 +263,84 @@
         document.getElementById('game-main-btn').innerText = "再玩一次";
         document.getElementById('game-click-btn').style.display = "none";
         
-        // 儲存分數邏輯
         const currentHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
         if(gameScore > currentHigh) {
             localStorage.setItem('mimunity_game_highscore', gameScore);
-            localStorage.setItem('game_sync_pending', 'true'); // 標記需要同步
+            localStorage.setItem('game_sync_pending', 'true');
             loadLocalHighScore();
             alert("新紀錄！" + gameScore + " 分");
-            syncGameScore(gameScore);
         }
+        
+        // 不管有無破紀錄都嘗試同步(或檢查 pending)
+        syncGameScore(localStorage.getItem('mimunity_game_highscore'));
     }
 
-    async function syncGameScore(score) {
-        if (!navigator.onLine) {
-            console.log("目前離線，分數已存於本地。");
+    // 排行榜抓取
+    async function fetchLeaderboard() {
+        const { data: scores, error } = await supabaseClient
+            .from('game_scores')
+            .select('username, score')
+            .order('score', { ascending: false })
+            .limit(5);
+
+        const listEl = document.getElementById('leaderboard-list');
+        if (error) {
+            listEl.innerHTML = "<div style='padding:10px; text-align:center; color:red;'>無法載入排名</div>";
             return;
         }
-        // 這裡可以擴充 Supabase table 來存分數，目前先示範邏輯
-        console.log("連線正常，正在同步分數到雲端...");
-        localStorage.removeItem('game_sync_pending');
+
+        if (!scores || scores.length === 0) {
+            listEl.innerHTML = "<div style='padding:10px; text-align:center; color:gray;'>暫無數據</div>";
+            return;
+        }
+
+        listEl.innerHTML = scores.map((s, index) => `
+            <div class="leaderboard-item">
+                <div>
+                    <span class="rank-num">${index + 1}</span>
+                    <span>${s.username || '匿名'}</span>
+                </div>
+                <span style="font-weight:bold; color:var(--fb-blue);">${s.score}分</span>
+            </div>
+        `).join('');
     }
 
-    // 監聽網路恢復，自動同步
+    // 分數同步邏輯
+    async function syncGameScore(score) {
+        if (!navigator.onLine || !currentUser) return;
+        
+        console.log("連線正常，正在嘗試同步...");
+        
+        // 1. 抓取目前帳號名稱
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('username')
+            .eq('id', currentUser.id)
+            .single();
+
+        // 2. 更新到資料表 game_scores
+        const { error } = await supabaseClient
+            .from('game_scores')
+            .upsert({ 
+                user_id: currentUser.id, 
+                username: profile?.username || '匿名使用者', 
+                score: parseInt(score),
+                created_at: new Date()
+            }, { onConflict: 'user_id' });
+
+        if (!error) {
+            localStorage.removeItem('game_sync_pending');
+            fetchLeaderboard(); // 同步成功後更新排行榜
+        }
+    }
+
     window.addEventListener('online', () => {
         if(localStorage.getItem('game_sync_pending')) {
-            const score = localStorage.getItem('mimunity_game_highscore');
-            syncGameScore(score);
+            syncGameScore(localStorage.getItem('mimunity_game_highscore'));
         }
     });
 
-    // --- 原有邏輯 ---
+    // --- 原有其他邏輯 ---
     function setupPresence() {
         const channel = supabaseClient.channel('online-users');
         channel
@@ -305,9 +366,12 @@
         const targetPage = document.getElementById('page-' + p);
         targetPage.classList.add('active');
         if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
+        
         if(p === 'home' && document.getElementById('posts-list').innerHTML === "") fetchPosts();
         if(p === 'chat' && document.getElementById('chat-box').innerHTML === "") { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
+        // 當切換到遊戲頁面時，抓取最新排行榜
+        if(p === 'game') fetchLeaderboard();
     }
 
     function showUserMenu(e, userId) {
@@ -526,6 +590,7 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => fetchPosts())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'game_scores' }, () => fetchLeaderboard()) // 監聽排行榜變化
             .subscribe();
     }
 
