@@ -1,7 +1,6 @@
-// 1. 定義快取名稱（如果你推送後發現沒更新，請把 v2 改成 v3）
-const CACHE_NAME = 'mimmunity-v2.2'; 
+// sw.js
+const CACHE_NAME = 'mimmunity-v3.0'; // 升級版本號以強制更新
 
-// 2. 靜態資源列表
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -10,49 +9,85 @@ const ASSETS_TO_CACHE = [
   './icon-512.png'
 ];
 
-// 安裝階段：立即接管
 self.addEventListener('install', (event) => {
-  console.log('SW: 正在安裝新版本...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting()) // 強制跳過等待，立即取代舊版 SW
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    .then(() => self.skipWaiting())
   );
 });
 
-// 激活階段：清理所有舊快取
 self.addEventListener('activate', (event) => {
-  console.log('SW: 已激活並清理舊快取');
   event.waitUntil(
     Promise.all([
-      self.clients.claim(), // 立即控制所有開啟的分頁
+      self.clients.claim(),
       caches.keys().then((keys) => {
-        return Promise.all(
-          keys.map((key) => {
-            if (key !== CACHE_NAME) {
-              return caches.delete(key);
-            }
-          })
-        );
+        return Promise.all(keys.map((key) => {
+          if (key !== CACHE_NAME) return caches.delete(key);
+        }));
       })
     ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
-    // 取得完整的請求網址字串
-    const requestUrl = event.request.url;
-
-    // ✨ 強化版守門員：只要網址包含 supabase.co 或 rest/v1，徹底放行
-    if (requestUrl.includes('supabase.co') || requestUrl.includes('/rest/v1/')) {
-        console.log('SW 放行 API 請求:', requestUrl);
-        return; // 直接中斷 SW 處理，讓瀏覽器接手
-    }
-
-    // 原本的靜態資源處理邏輯
-    event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
-    );
+  const requestUrl = event.request.url;
+  // 核心守門員：放行 Supabase API
+  if (requestUrl.includes('supabase.co') || requestUrl.includes('/rest/v1/')) {
+    return; 
+  }
+  event.respondWith(
+    caches.match(event.request).then((response) => response || fetch(event.request))
+  );
 });
+
+// 頁面載入或切換回首頁時執行
+async function syncUserStats() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. 取得個人檔案
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+    // 2. 取得歷史最高分 (從 game_scores 資料表)
+    const { data: scoreData, error } = await supabase
+        .from('game_scores')
+        .select('score')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    const highScore = scoreData ? scoreData.score : 0;
+
+    // 更新介面 (假設你有這些 ID 的元素)
+    if(document.getElementById('highScoreDisplay')) {
+        document.getElementById('highScoreDisplay').innerText = `個人最高紀錄: ${highScore}`;
+    }
+    return highScore;
+}
+
+async function handleGameOver(finalScore) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 先抓取目前紀錄
+    const currentBest = await syncUserStats();
+
+    // 只有打破紀錄才更新資料庫
+    if (finalScore > currentBest) {
+        const { error } = await supabase
+            .from('game_scores')
+            .upsert({ 
+                user_id: user.id, 
+                score: finalScore, 
+                updated_at: new Date() 
+            });
+        
+        if (!error) {
+            console.log("新紀錄已同步！");
+            syncUserStats(); // 重新整理顯示的分數
+        }
+    }
+}
