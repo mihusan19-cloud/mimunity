@@ -32,6 +32,10 @@
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
         .post-image { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 450px; object-fit: contain; background: #f0f2f5; display: block; min-height: 100px; }
         
+        /* 留言區樣式 */
+        .comment-area { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .comment-item { font-size: 13px; margin-bottom: 5px; background: #f0f2f5; padding: 8px; border-radius: 8px; }
+
         .auto-link { color: var(--fb-blue); text-decoration: none; word-break: break-all; overflow-wrap: anywhere; }
         .auto-link:hover { text-decoration: underline; }
 
@@ -196,14 +200,102 @@
         }
     });
 
-    // --- 遊戲邏輯：已移除全球排行榜抓取 ---
+    async function handleCreatePost() {
+        const content = document.getElementById('post-content').value;
+        const file = document.getElementById('post-file').files[0];
+        if(!content.trim() && !file) return;
+
+        let imageUrl = null;
+        if(file) {
+            const fileName = `${Date.now()}_${file.name}`;
+            const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
+            if(!error) imageUrl = fileName;
+        }
+
+        await supabaseClient.from('posts').insert([{ content, image_url: imageUrl, user_id: currentUser.id }]);
+        document.getElementById('post-content').value = "";
+        document.getElementById('post-file').value = "";
+        fetchPosts();
+    }
+
+    async function fetchPosts() {
+        const { data: posts } = await supabaseClient.from('posts').select('*, profiles(username, avatar_url), post_likes(user_id), comments(*, profiles(username))').order('created_at', { ascending: false });
+        const list = document.getElementById('posts-list');
+        list.innerHTML = (posts || []).map(p => {
+            const isMe = p.user_id === currentUser.id;
+            const hasLiked = p.post_likes?.some(l => l.user_id === currentUser.id);
+            const commentsHtml = (p.comments || []).map(c => `
+                <div class="comment-item"><b>${c.profiles?.username || '匿名'}:</b> ${c.content}</div>
+            `).join('');
+
+            return `<div class="post-card">
+                <div class="post-header">
+                    <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
+                        <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                        <b>${p.profiles?.username || '匿名'}</b>
+                    </div>
+                    ${isMe ? `<div>
+                        <button onclick="editPost('${p.id}', '${p.content.replace(/'/g, "\\'")}')" style="font-size:12px;">編輯</button>
+                        <button onclick="deletePost('${p.id}')" style="font-size:12px; color:red;">刪除</button>
+                    </div>` : ''}
+                </div>
+                <div style="white-space:pre-wrap;">${linkify(p.content)}</div>
+                ${p.image_url ? `<img src="${getImageUrl(p.image_url)}" class="post-image">` : ''}
+                <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+                    <span style="cursor:pointer; color:${hasLiked ? '#1877f2':'#65676b'}" onclick="handleLike('${p.id}', ${p.likes||0}, ${hasLiked})">${hasLiked ? '❤️':'🤍'} ${p.likes||0}</span>
+                </div>
+                <div class="comment-area">
+                    <div id="comments-${p.id}">${commentsHtml}</div>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <input type="text" id="comment-input-${p.id}" placeholder="寫下留言..." style="padding:5px; margin:0; font-size:12px;">
+                        <button onclick="handleComment('${p.id}')" style="font-size:12px; padding:0 10px;">送出</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function handleLike(postId, currentLikes, hasLiked) {
+        if(hasLiked) {
+            await supabaseClient.from('post_likes').delete().match({ post_id: postId, user_id: currentUser.id });
+            await supabaseClient.from('posts').update({ likes: Math.max(0, currentLikes - 1) }).eq('id', postId);
+        } else {
+            await supabaseClient.from('post_likes').insert([{ post_id: postId, user_id: currentUser.id }]);
+            await supabaseClient.from('posts').update({ likes: currentLikes + 1 }).eq('id', postId);
+        }
+        fetchPosts();
+    }
+
+    async function handleComment(postId) {
+        const input = document.getElementById(`comment-input-${postId}`);
+        if(!input.value.trim()) return;
+        await supabaseClient.from('comments').insert([{ post_id: postId, user_id: currentUser.id, content: input.value }]);
+        input.value = "";
+        fetchPosts();
+    }
+
+    async function editPost(postId, oldContent) {
+        const newContent = prompt("編輯你的貼文:", oldContent);
+        if(newContent !== null && newContent.trim() !== "") {
+            await supabaseClient.from('posts').update({ content: newContent }).eq('id', postId);
+            fetchPosts();
+        }
+    }
+
+    async function deletePost(postId) {
+        if(confirm("確定要刪除這則貼文嗎？")) {
+            await supabaseClient.from('posts').delete().eq('id', postId);
+            fetchPosts();
+        }
+    }
+
+    // --- 遊戲邏輯 ---
     async function refreshGameData() {
         loadLocalHighScore(); 
         if (currentUser) {
             const { data } = await supabaseClient.from('game_scores').select('score').eq('user_id', currentUser.id).maybeSingle();
             const cloudScore = data ? data.score : 0;
             const localScore = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
-            
             if (cloudScore > localScore) {
                 localStorage.setItem('mimunity_game_highscore', cloudScore);
                 loadLocalHighScore();
@@ -213,7 +305,8 @@
 
     function loadLocalHighScore() {
         const saved = localStorage.getItem('mimunity_game_highscore') || 0;
-        document.getElementById('game-highscore-display').innerText = saved;
+        const el = document.getElementById('game-highscore-display');
+        if(el) el.innerText = saved;
     }
 
     function startGame() {
@@ -225,7 +318,6 @@
         document.getElementById('game-status').innerText = "衝啊！！";
         document.getElementById('game-main-btn').style.display = "none";
         document.getElementById('game-click-btn').style.display = "inline-block";
-        
         gameInterval = setInterval(() => {
             gameTimer--;
             document.getElementById('game-timer').innerText = gameTimer + "s";
@@ -245,9 +337,7 @@
         document.getElementById('game-status').innerText = "時間到！";
         document.getElementById('game-main-btn').style.display = "block";
         document.getElementById('game-click-btn').style.display = "none";
-        
         const localHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
-        
         if(gameScore > localHigh) {
             localStorage.setItem('mimunity_game_highscore', gameScore);
             loadLocalHighScore();
@@ -264,16 +354,14 @@
             return;
         }
         const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', currentUser.id).single();
-        await supabaseClient
-            .from('game_scores')
-            .upsert({ 
-                user_id: currentUser.id, 
-                username: profile?.username || '匿名玩家', 
-                score: parseInt(score)
-            }, { onConflict: 'user_id' });
+        await supabaseClient.from('game_scores').upsert({ 
+            user_id: currentUser.id, 
+            username: profile?.username || '匿名玩家', 
+            score: parseInt(score)
+        }, { onConflict: 'user_id' });
     }
 
-    // --- 基礎功能 & 聊天功能保持不變 ---
+    // --- 聊天與基礎功能 ---
     async function handleLogin() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
@@ -306,7 +394,6 @@
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
-        
         if(p === 'home') fetchPosts();
         if(p === 'chat') { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
@@ -384,28 +471,6 @@
         }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await channel.track({ user_id: currentUser.id }); });
     }
 
-    async function fetchPosts() {
-        const { data: posts } = await supabaseClient.from('posts').select('*, profiles(username, avatar_url), post_likes(user_id)').order('created_at', { ascending: false });
-        const list = document.getElementById('posts-list');
-        list.innerHTML = (posts || []).map(p => {
-            const hasLiked = p.post_likes?.some(l => l.user_id === currentUser.id);
-            return `<div class="post-card">
-                <div class="post-header">
-                    <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
-                        <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
-                        <b>${p.profiles?.username || '匿名'}</b>
-                    </div>
-                </div>
-                <div style="white-space:pre-wrap;">${linkify(p.content)}</div>
-                ${p.image_url ? `<img src="${getImageUrl(p.image_url)}" class="post-image">` : ''}
-                <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
-                    <span style="cursor:pointer; color:${hasLiked ? '#1877f2':'#65676b'}" onclick="handleLike('${p.id}', ${p.likes||0}, ${hasLiked})">${hasLiked ? '❤️':'🤍'} ${p.likes||0}</span>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    // 這裡保留你原本其他的 profiles 或貼文操作邏輯函數
     async function loadProfileData() {
         const id = viewingUserId || currentUser.id;
         const { data } = await supabaseClient.from('profiles').select('*').eq('id', id).single();
@@ -431,6 +496,18 @@
         await supabaseClient.from('profiles').upsert({ id: currentUser.id, username, bio });
         alert("資料已更新！");
         loadUserInfo();
+    }
+
+    async function handleAvatarUpload() {
+        const file = document.getElementById('avatar-file').files[0];
+        if(!file) return;
+        const fileName = `${currentUser.id}_avatar_${Date.now()}`;
+        const { error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
+        if(!error) {
+            await supabaseClient.from('profiles').update({ avatar_url: fileName }).eq('id', currentUser.id);
+            alert("頭像上傳成功！");
+            loadProfileData();
+        }
     }
 </script>
 </body>
