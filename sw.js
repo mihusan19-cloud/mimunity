@@ -1,5 +1,5 @@
 // 1. 定義快取名稱（每次更新遊戲內容，建議把 v1 改成 v2，瀏覽器才會更新）
-const CACHE_NAME = 'mimunity-v1';
+const CACHE_NAME = 'mimmunity-v2';
 
 // 2. 列出所有「斷網時也要能跑」的檔案
 // 請確保這些檔案在你的 GitHub 倉庫中路徑正確
