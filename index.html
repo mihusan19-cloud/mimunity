@@ -11,8 +11,8 @@
     <style>
         :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-gray: #65676b; --fb-green: #31a24c; }
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--fb-bg); margin: 0; padding-bottom: 50px; color: #1c1e21; }
-        nav { background: white; display: none; justify-content: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #ddd; }
-        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 30px; cursor: pointer; }
+        nav { background: white; display: none; justify-content: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+        nav a { text-decoration: none; color: var(--fb-gray); font-weight: bold; padding: 15px 20px; cursor: pointer; font-size: 14px; }
         nav a.active { color: var(--fb-blue); border-bottom: 3px solid var(--fb-blue); background: #e7f3ff; }
         .container { display: flex; justify-content: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; display: none; }
@@ -61,6 +61,10 @@
         #user-action-menu { position: fixed; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1000; min-width: 160px; overflow: hidden; }
         .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; transition: background 0.2s; }
         .menu-item:hover { background: #f0f2f5; }
+
+        /* 遊戲區域專用樣式 */
+        #game-area { border: 2px dashed #ddd; border-radius: 12px; padding: 20px; text-align: center; margin-top: 15px; background: #fff; }
+        .game-btn { background: var(--fb-green); color: white; border: none; padding: 15px; border-radius: 50%; width: 80px; height: 80px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 #237839; active: transform: translateY(4px); active: box-shadow: none; }
     </style>
 </head>
 <body onclick="hideUserMenu()">
@@ -68,6 +72,7 @@
 <nav id="main-nav">
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
     <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
+    <a onclick="showPage('game')" id="nav-game">🎮 遊戲小區</a>
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
 </nav>
 
@@ -116,6 +121,28 @@
         </div>
     </div>
 
+    <div id="page-game" class="card">
+        <h2 style="text-align:center;">🎮 遊戲小區 (離線可用)</h2>
+        <div style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center;">
+            🏆 我的最高分: <span id="game-highscore-display">0</span>
+        </div>
+        
+        <div id="game-area">
+            <div id="game-status">準備好了嗎？</div>
+            <div id="game-timer" style="font-size: 24px; font-weight: bold; margin: 10px 0; color: var(--fb-blue);">10s</div>
+            <div id="game-score" style="font-size: 18px; margin-bottom: 15px;">得分: 0</div>
+            
+            <button id="game-main-btn" class="btn-primary" onclick="startGame()">開始遊戲</button>
+            <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">CLICK!</button>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <h4>多人模式 (開發中)</h4>
+            <button class="btn-primary" style="background: #8e8e8e; cursor: not-allowed;">👥 與朋友對戰</button>
+            <p style="font-size: 11px; color: gray;">* 多人模式需要網路連線。單人模式支援離線遊玩。</p>
+        </div>
+    </div>
+
     <div id="page-profile" class="card">
         <h2 id="profile-display-title" style="text-align:center;">個人檔案</h2>
         <div style="text-align:center; margin-bottom:20px;">
@@ -155,6 +182,12 @@
     let viewingUserId = null;
     let userPresence = {};
 
+    // --- 遊戲邏輯變數 ---
+    let gameScore = 0;
+    let gameTimer = 10;
+    let gameInterval = null;
+    let isGameRunning = false;
+
     function linkify(text) {
         if (!text) return "";
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -173,12 +206,80 @@
             loadUserInfo();
             setupPresence();
             setupRealtime();
+            loadLocalHighScore(); // 載入本地分數
         } else {
             document.getElementById('main-nav').style.display = 'none';
             showPage('login');
         }
     });
 
+    // --- 遊戲功能函數 ---
+    function loadLocalHighScore() {
+        const saved = localStorage.getItem('mimunity_game_highscore') || 0;
+        document.getElementById('game-highscore-display').innerText = saved;
+    }
+
+    function startGame() {
+        if(isGameRunning) return;
+        isGameRunning = true;
+        gameScore = 0;
+        gameTimer = 10;
+        document.getElementById('game-score').innerText = "得分: 0";
+        document.getElementById('game-status').innerText = "衝啊！！";
+        document.getElementById('game-main-btn').style.display = "none";
+        document.getElementById('game-click-btn').style.display = "inline-block";
+        
+        gameInterval = setInterval(() => {
+            gameTimer--;
+            document.getElementById('game-timer').innerText = gameTimer + "s";
+            if(gameTimer <= 0) endGame();
+        }, 1000);
+    }
+
+    function hitGame() {
+        if(!isGameRunning) return;
+        gameScore++;
+        document.getElementById('game-score').innerText = "得分: " + gameScore;
+    }
+
+    function endGame() {
+        clearInterval(gameInterval);
+        isGameRunning = false;
+        document.getElementById('game-status').innerText = "時間到！";
+        document.getElementById('game-main-btn').style.display = "block";
+        document.getElementById('game-main-btn').innerText = "再玩一次";
+        document.getElementById('game-click-btn').style.display = "none";
+        
+        // 儲存分數邏輯
+        const currentHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
+        if(gameScore > currentHigh) {
+            localStorage.setItem('mimunity_game_highscore', gameScore);
+            localStorage.setItem('game_sync_pending', 'true'); // 標記需要同步
+            loadLocalHighScore();
+            alert("新紀錄！" + gameScore + " 分");
+            syncGameScore(gameScore);
+        }
+    }
+
+    async function syncGameScore(score) {
+        if (!navigator.onLine) {
+            console.log("目前離線，分數已存於本地。");
+            return;
+        }
+        // 這裡可以擴充 Supabase table 來存分數，目前先示範邏輯
+        console.log("連線正常，正在同步分數到雲端...");
+        localStorage.removeItem('game_sync_pending');
+    }
+
+    // 監聽網路恢復，自動同步
+    window.addEventListener('online', () => {
+        if(localStorage.getItem('game_sync_pending')) {
+            const score = localStorage.getItem('mimunity_game_highscore');
+            syncGameScore(score);
+        }
+    });
+
+    // --- 原有邏輯 ---
     function setupPresence() {
         const channel = supabaseClient.channel('online-users');
         channel
@@ -454,7 +555,6 @@
     async function handleSignUp() { await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value }); alert("請收信！"); }
     async function handleLogout() { await supabaseClient.auth.signOut(); }
 
-    // 註冊 PWA Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
         .then(() => console.log("Service Worker 註冊成功"));
