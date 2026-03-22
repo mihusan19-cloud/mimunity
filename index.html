@@ -32,15 +32,18 @@
         .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #eee; }
         .post-image { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 450px; object-fit: contain; background: #f0f2f5; display: block; min-height: 100px; }
         
-        /* 留言區樣式 */
         .comment-area { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
         .comment-item { font-size: 13px; margin-bottom: 5px; background: #f0f2f5; padding: 8px; border-radius: 8px; }
 
         .auto-link { color: var(--fb-blue); text-decoration: none; word-break: break-all; overflow-wrap: anywhere; }
         .auto-link:hover { text-decoration: underline; }
 
+        /* 防雷功能樣式 */
         .spoiler { background: #333; color: #333; cursor: pointer; border-radius: 4px; padding: 0 4px; }
         .spoiler.revealed { background: rgba(0,0,0,0.1); color: inherit; }
+        .chat-image { width: 100%; max-width: 200px; border-radius: 8px; margin-top: 5px; cursor: pointer; display: block; }
+        .spoiler-img { filter: blur(25px) brightness(0.5); transition: filter 0.3s; }
+        .spoiler-img.revealed { filter: none; }
 
         .avatar-wrapper { position: relative; display: inline-block; }
         .status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #bbb; transition: background 0.3s; }
@@ -110,7 +113,7 @@
             <input type="text" id="chat-input" placeholder="說點什麼... (可用 ||隱藏文字||)">
             <div style="display:flex; justify-content: space-between; align-items:center; margin-top:5px;">
                 <div style="font-size:11px;">
-                    <input type="file" id="chat-file" style="width:130px; margin:0;"><br>
+                    <input type="file" id="chat-file" accept="image/*" style="width:130px; margin:0;"><br>
                     <label style="cursor:pointer;"><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
                 </div>
                 <button class="btn-primary" style="width:80px; margin:0;" onclick="handleSendMessage()">傳送</button>
@@ -176,6 +179,7 @@
     let gameInterval = null;
     let isGameRunning = false;
 
+    // 輔助功能：連結化與獲取圖片網址
     function linkify(text) {
         if (!text) return "";
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -186,6 +190,12 @@
         });
     }
 
+    function getImageUrl(path) { 
+        if (!path) return null; 
+        return path.startsWith('http') ? path : `${supabaseUrl}/storage/v1/object/public/avatars/${path}`; 
+    }
+
+    // --- 認證與初始化 ---
     supabaseClient.auth.onAuthStateChange((ev, session) => {
         if (session) {
             currentUser = session.user;
@@ -200,6 +210,7 @@
         }
     });
 
+    // --- 首頁貼文功能 ---
     async function handleCreatePost() {
         const content = document.getElementById('post-content').value;
         const file = document.getElementById('post-file').files[0];
@@ -207,7 +218,7 @@
 
         let imageUrl = null;
         if(file) {
-            const fileName = `${Date.now()}_${file.name}`;
+            const fileName = `post_${Date.now()}_${file.name}`;
             const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
             if(!error) imageUrl = fileName;
         }
@@ -289,6 +300,84 @@
         }
     }
 
+    // --- 聊天大廳功能 (修正：包含圖片與防雷) ---
+    async function fetchMessages() {
+        let query = supabaseClient.from('messages').select('*, profiles(username, avatar_url)');
+        if (chatTarget) {
+            const filter = `and(user_id.eq.${currentUser.id},receiver_id.eq.${chatTarget}),and(user_id.eq.${chatTarget},receiver_id.eq.${currentUser.id})`;
+            query = query.or(filter);
+            const { data: targetProfile } = await supabaseClient.from('profiles').select('username').eq('id', chatTarget).single();
+            document.getElementById('chat-title').innerHTML = `💬 與 ${targetProfile?.username || '用戶'} 私訊中 <button onclick="chatTarget=null;fetchMessages();" style="font-size:10px; cursor:pointer; background:none; border:1px solid #ddd; padding:2px 5px; border-radius:4px;">返回大廳</button>`;
+        } else {
+            query = query.is('receiver_id', null);
+            document.getElementById('chat-title').innerHTML = `💬 公共聊天大廳`;
+        }
+
+        const { data: msgs, error } = await query.order('created_at', { ascending: true });
+        if (error) return;
+
+        const box = document.getElementById('chat-box');
+        box.innerHTML = (msgs || []).map(m => {
+            const isMe = m.user_id === currentUser.id;
+            
+            // 文字防雷處理 ||text||
+            let textContent = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
+            textContent = linkify(textContent);
+
+            // 圖片防雷與顯示處理
+            let imageHtml = "";
+            if (m.image_url) {
+                const fullImgUrl = getImageUrl(m.image_url);
+                if (m.is_spoiler) {
+                    imageHtml = `<img src="${fullImgUrl}" class="chat-image spoiler-img" onclick="this.classList.toggle('revealed')" title="點擊解除防雷模糊">`;
+                } else {
+                    imageHtml = `<img src="${fullImgUrl}" class="chat-image" onclick="window.open('${fullImgUrl}')">`;
+                }
+            }
+
+            return `<div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
+                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
+                <div class="bubble">
+                    <div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${m.profiles?.username}</div>
+                    <div>${textContent}</div>
+                    ${imageHtml}
+                </div>
+            </div>`;
+        }).join('');
+        scrollToBottom();
+    }
+
+    async function handleSendMessage() {
+        const input = document.getElementById('chat-input');
+        const fileInput = document.getElementById('chat-file');
+        const isSpoiler = document.getElementById('chat-is-spoiler').checked;
+        
+        let content = input.value.trim();
+        let file = fileInput.files[0];
+        
+        if(!content && !file) return;
+
+        let imageUrl = null;
+        if(file) {
+            const fileName = `chat_${Date.now()}_${file.name}`;
+            const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
+            if(!error) imageUrl = fileName;
+        }
+
+        await supabaseClient.from('messages').insert([{ 
+            content: content, 
+            user_id: currentUser.id, 
+            receiver_id: chatTarget,
+            image_url: imageUrl,
+            is_spoiler: isSpoiler
+        }]);
+
+        input.value = "";
+        fileInput.value = "";
+        document.getElementById('chat-is-spoiler').checked = false;
+        fetchMessages();
+    }
+
     // --- 遊戲邏輯 ---
     async function refreshGameData() {
         loadLocalHighScore(); 
@@ -349,10 +438,7 @@
     }
 
     async function syncGameScore(score) {
-        if (!navigator.onLine || !currentUser) {
-            localStorage.setItem('game_sync_pending', 'true');
-            return;
-        }
+        if (!navigator.onLine || !currentUser) return;
         const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', currentUser.id).single();
         await supabaseClient.from('game_scores').upsert({ 
             user_id: currentUser.id, 
@@ -361,7 +447,7 @@
         }, { onConflict: 'user_id' });
     }
 
-    // --- 聊天與基礎功能 ---
+    // --- 基礎認證與選單 ---
     async function handleLogin() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
@@ -394,48 +480,14 @@
         document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
         document.getElementById('page-' + p).classList.add('active');
         if(document.getElementById('nav-' + p)) document.getElementById('nav-' + p).classList.add('active');
+        
         if(p === 'home') fetchPosts();
         if(p === 'chat') { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
         if(p === 'game') refreshGameData();
     }
 
-    async function fetchMessages() {
-        let query = supabaseClient.from('messages').select('*, profiles(username, avatar_url)');
-        if (chatTarget) {
-            const filter = `and(user_id.eq.${currentUser.id},receiver_id.eq.${chatTarget}),and(user_id.eq.${chatTarget},receiver_id.eq.${currentUser.id})`;
-            query = query.or(filter);
-            const { data: targetProfile } = await supabaseClient.from('profiles').select('username').eq('id', chatTarget).single();
-            document.getElementById('chat-title').innerHTML = `💬 與 ${targetProfile?.username || '用戶'} 私訊中 <button onclick="chatTarget=null;fetchMessages();" style="font-size:10px; cursor:pointer; background:none; border:1px solid #ddd; padding:2px 5px; border-radius:4px;">返回大廳</button>`;
-        } else {
-            query = query.is('receiver_id', null);
-            document.getElementById('chat-title').innerHTML = `💬 公共聊天大廳`;
-        }
-        const { data: msgs, error } = await query.order('created_at', { ascending: true });
-        if (error) return;
-        const box = document.getElementById('chat-box');
-        box.innerHTML = (msgs || []).map(m => {
-            const isMe = m.user_id === currentUser.id;
-            let content = (m.content || "").replace(/\|\|(.*?)\|\|/g, '<span class="spoiler" onclick="this.classList.add(\'revealed\')">$1</span>');
-            content = linkify(content);
-            return `<div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
-                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
-                <div class="bubble"><div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${m.profiles?.username}</div><div>${content}</div></div>
-            </div>`;
-        }).join('');
-        scrollToBottom();
-    }
-
-    async function handleSendMessage() {
-        const input = document.getElementById('chat-input');
-        if(!input.value.trim()) return;
-        await supabaseClient.from('messages').insert([{ content: input.value, user_id: currentUser.id, receiver_id: chatTarget }]);
-        input.value = ""; 
-        fetchMessages();
-    }
-
     function scrollToBottom() { const box = document.getElementById('chat-box'); if (box) box.scrollTop = box.scrollHeight; }
-    function getImageUrl(path) { if (!path) return null; return path.startsWith('http') ? path : `${supabaseUrl}/storage/v1/object/public/avatars/${path}`; }
     function hideUserMenu() { document.getElementById('user-action-menu').style.display = 'none'; }
     function showUserMenu(e, userId) {
         e.stopPropagation();
@@ -471,6 +523,7 @@
         }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await channel.track({ user_id: currentUser.id }); });
     }
 
+    // --- 個人檔案與上傳 ---
     async function loadProfileData() {
         const id = viewingUserId || currentUser.id;
         const { data } = await supabaseClient.from('profiles').select('*').eq('id', id).single();
