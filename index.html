@@ -62,15 +62,73 @@
         .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; transition: background 0.2s; }
         .menu-item:hover { background: #f0f2f5; }
 
-        /* 遊戲區域專用樣式 */
-        #game-area { border: 2px dashed #ddd; border-radius: 12px; padding: 20px; text-align: center; margin-top: 15px; background: #fff; }
-        .game-btn { background: var(--fb-green); color: white; border: none; padding: 15px; border-radius: 50%; width: 80px; height: 80px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 0 #237839; }
-        .game-btn:active { transform: translateY(4px); box-shadow: none; }
+        /* --- 遊戲小區優化樣式 --- */
+        #game-area { 
+            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.02), 0 10px 20px rgba(0,0,0,0.05);
+            text-align: center;
+        }
 
-        /* 排行榜樣式 */
-        .leaderboard-item { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 14px; align-items: center; }
-        .leaderboard-item:last-child { border-bottom: none; }
-        .rank-num { font-weight: bold; width: 25px; color: var(--fb-gray); }
+        .game-btn { 
+            background: linear-gradient(135deg, #42b72a, #31a24c);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #237839, 0 10px 20px rgba(49, 162, 76, 0.3);
+            transition: all 0.1s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .game-btn:active { 
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #237839;
+        }
+
+        /* 結算彈窗樣式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            width: 80%;
+            max-width: 300px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .result-score { font-size: 48px; color: var(--fb-blue); font-weight: 800; margin: 10px 0; }
+        .timer-danger { color: #fa3e3e !important; animation: shake 0.2s infinite; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -1px); }
+        }
     </style>
 </head>
 <body onclick="hideUserMenu()">
@@ -128,31 +186,25 @@
     </div>
 
     <div id="page-game" class="card">
-        <h2 style="text-align:center;">🎮 遊戲小區 (離線可用)</h2>
-        <div style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center;">
-            🏆 我的最高分: <span id="game-highscore-display">0</span>
+        <h2 style="text-align:center;">🎮 點擊挑戰賽</h2>
+        <div style="background: #e7f3ff; padding: 10px; border-radius: 50px; margin-bottom: 20px; font-size: 14px; text-align: center; border: 1px solid #c9e2ff;">
+            🏆 最高紀錄: <span id="game-highscore-display" style="font-weight: bold; color: #f5a623;">0</span>
         </div>
         
         <div id="game-area">
-            <div id="game-status">準備好了嗎？</div>
-            <div id="game-timer" style="font-size: 24px; font-weight: bold; margin: 10px 0; color: var(--fb-blue);">10s</div>
-            <div id="game-score" style="font-size: 18px; margin-bottom: 15px;">得分: 0</div>
+            <div id="game-timer" style="font-size: 32px; font-weight: bold; margin-bottom: 5px; color: var(--fb-gray);">10s</div>
+            <div id="game-score" style="font-size: 18px; color: var(--fb-gray); margin-bottom: 25px;">目前得分: 0</div>
             
-            <button id="game-main-btn" class="btn-primary" onclick="startGame()">開始遊戲</button>
-            <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">CLICK!</button>
-        </div>
-
-        <div id="leaderboard-section" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
-            <h4 style="text-align: center; color: var(--fb-blue); margin-bottom: 10px;">🌍 全球排行榜 (Top 5)</h4>
-            <div id="leaderboard-list" style="background: #f9f9f9; border-radius: 8px; padding: 5px;">
-                載入排名中...
+            <div style="height: 150px; display: flex; justify-content: center; align-items: center;">
+                <button id="game-main-btn" class="btn-primary" style="width: 150px; padding: 15px;" onclick="startGame()">開始遊戲</button>
+                <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">TAP!</button>
             </div>
+            <p id="game-status" style="margin-top: 15px; font-size: 14px; color: #888;">點擊按鈕開始計時</p>
         </div>
 
         <div style="margin-top: 20px;">
             <h4>多人模式 (開發中)</h4>
             <button class="btn-primary" style="background: #8e8e8e; cursor: not-allowed;">👥 與朋友對戰</button>
-            <p style="font-size: 11px; color: gray;">* 排行榜與同步需要網路連線。單人模式支援離線遊玩。</p>
         </div>
     </div>
 
@@ -180,6 +232,15 @@
     </div>
 </div>
 
+<div id="result-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin: 0;">遊戲結束！</h2>
+        <div class="result-score" id="final-score">0</div>
+        <p id="record-text" style="color: #31a24c; font-weight: bold; margin-bottom: 20px;"></p>
+        <button class="btn-primary" onclick="closeModal()">知道了</button>
+    </div>
+</div>
+
 <div id="user-action-menu">
     <div class="menu-item" id="menu-view-profile">👤 查看個人檔案</div>
     <div class="menu-item" id="menu-start-chat" style="color:var(--fb-blue); font-weight:bold;">💬 發送私訊</div>
@@ -187,7 +248,7 @@
 
 <script>
     const supabaseUrl = 'https://tofcvucrwcyvbmkywtaf.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg';
+    const supabaseKey = 'sb_publishable_HIQt8Rw7AnV-G7jwlnDNuw_ISlnrV9P'; 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg';
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     let currentUser = null;
@@ -195,7 +256,6 @@
     let viewingUserId = null;
     let userPresence = {};
 
-    // --- 遊戲邏輯變數 ---
     let gameScore = 0;
     let gameTimer = 10;
     let gameInterval = null;
@@ -226,7 +286,7 @@
         }
     });
 
-    // --- 遊戲功能函數 (包含排行榜邏輯) ---
+    // --- 遊戲邏輯 ---
     function loadLocalHighScore() {
         const saved = localStorage.getItem('mimunity_game_highscore') || 0;
         document.getElementById('game-highscore-display').innerText = saved;
@@ -237,14 +297,24 @@
         isGameRunning = true;
         gameScore = 0;
         gameTimer = 10;
-        document.getElementById('game-score').innerText = "得分: 0";
-        document.getElementById('game-status').innerText = "衝啊！！";
+        
+        const timerEl = document.getElementById('game-timer');
+        timerEl.classList.remove('timer-danger');
+        timerEl.innerText = "10s";
+        
+        document.getElementById('game-score').innerText = "目前得分: 0";
+        document.getElementById('game-status').innerText = "衝啊！！快點擊！";
         document.getElementById('game-main-btn').style.display = "none";
         document.getElementById('game-click-btn').style.display = "inline-block";
         
         gameInterval = setInterval(() => {
             gameTimer--;
-            document.getElementById('game-timer').innerText = gameTimer + "s";
+            timerEl.innerText = gameTimer + "s";
+            
+            if(gameTimer <= 3) {
+                timerEl.classList.add('timer-danger');
+            }
+
             if(gameTimer <= 0) endGame();
         }, 1000);
     }
@@ -252,95 +322,38 @@
     function hitGame() {
         if(!isGameRunning) return;
         gameScore++;
-        document.getElementById('game-score').innerText = "得分: " + gameScore;
+        document.getElementById('game-score').innerText = "目前得分: " + gameScore;
     }
 
     function endGame() {
         clearInterval(gameInterval);
         isGameRunning = false;
-        document.getElementById('game-status').innerText = "時間到！";
-        document.getElementById('game-main-btn').style.display = "block";
-        document.getElementById('game-main-btn').innerText = "再玩一次";
-        document.getElementById('game-click-btn').style.display = "none";
         
+        document.getElementById('game-main-btn').style.display = "block";
+        document.getElementById('game-main-btn').innerText = "再次挑戰";
+        document.getElementById('game-click-btn').style.display = "none";
+        document.getElementById('game-status').innerText = "時間到！";
+
         const currentHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
+        const recordText = document.getElementById('record-text');
+        
         if(gameScore > currentHigh) {
             localStorage.setItem('mimunity_game_highscore', gameScore);
-            localStorage.setItem('game_sync_pending', 'true');
             loadLocalHighScore();
-            alert("新紀錄！" + gameScore + " 分");
+            recordText.innerText = "✨ 恭喜打破個人紀錄！ ✨";
+        } else {
+            recordText.innerText = "再接再厲！";
         }
-        
-        // 不管有無破紀錄都嘗試同步(或檢查 pending)
-        syncGameScore(localStorage.getItem('mimunity_game_highscore'));
+
+        document.getElementById('final-score').innerText = gameScore;
+        document.getElementById('result-modal').style.display = 'flex';
     }
 
-    // 排行榜抓取
-    async function fetchLeaderboard() {
-        const { data: scores, error } = await supabaseClient
-            .from('game_scores')
-            .select('username, score')
-            .order('score', { ascending: false })
-            .limit(5);
-
-        const listEl = document.getElementById('leaderboard-list');
-        if (error) {
-            listEl.innerHTML = "<div style='padding:10px; text-align:center; color:red;'>無法載入排名</div>";
-            return;
-        }
-
-        if (!scores || scores.length === 0) {
-            listEl.innerHTML = "<div style='padding:10px; text-align:center; color:gray;'>暫無數據</div>";
-            return;
-        }
-
-        listEl.innerHTML = scores.map((s, index) => `
-            <div class="leaderboard-item">
-                <div>
-                    <span class="rank-num">${index + 1}</span>
-                    <span>${s.username || '匿名'}</span>
-                </div>
-                <span style="font-weight:bold; color:var(--fb-blue);">${s.score}分</span>
-            </div>
-        `).join('');
+    function closeModal() {
+        document.getElementById('result-modal').style.display = 'none';
     }
 
-    // 分數同步邏輯
-    async function syncGameScore(score) {
-        if (!navigator.onLine || !currentUser) return;
-        
-        console.log("連線正常，正在嘗試同步...");
-        
-        // 1. 抓取目前帳號名稱
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('username')
-            .eq('id', currentUser.id)
-            .single();
-
-        // 2. 更新到資料表 game_scores
-        const { error } = await supabaseClient
-            .from('game_scores')
-            .upsert({ 
-                user_id: currentUser.id, 
-                username: profile?.username || '匿名使用者', 
-                score: parseInt(score),
-                created_at: new Date()
-            }, { onConflict: 'user_id' });
-
-        if (!error) {
-            localStorage.removeItem('game_sync_pending');
-            fetchLeaderboard(); // 同步成功後更新排行榜
-        }
-    }
-
-    window.addEventListener('online', () => {
-        if(localStorage.getItem('game_sync_pending')) {
-            syncGameScore(localStorage.getItem('mimunity_game_highscore'));
-        }
-    });
-
-    // --- 原有其他邏輯 ---
+    // --- 其他功能 ---
     function setupPresence() {
         const channel = supabaseClient.channel('online-users');
         channel
@@ -370,8 +383,6 @@
         if(p === 'home' && document.getElementById('posts-list').innerHTML === "") fetchPosts();
         if(p === 'chat' && document.getElementById('chat-box').innerHTML === "") { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
-        // 當切換到遊戲頁面時，抓取最新排行榜
-        if(p === 'game') fetchLeaderboard();
     }
 
     function showUserMenu(e, userId) {
@@ -484,9 +495,7 @@
                 await supabaseClient.from('posts').update({ likes: count + 1 }).eq('id', postId);
             }
             await fetchPosts(); 
-        } catch (err) {
-            console.error("點讚發生錯誤:", err);
-        }
+        } catch (err) { console.error("點讚錯誤:", err); }
     }
 
     async function addComment(postId) {
@@ -510,8 +519,8 @@
     async function editComment(id, oldContent) {
         const newContent = prompt("編輯留言：", oldContent);
         if (newContent !== null && newContent.trim() !== "") {
-            const { error } = await supabaseClient.from('comments').update({ content: newContent.trim() }).eq('id', id);
-            if (!error) { fetchPosts(); } else { alert("編輯失敗！"); }
+            await supabaseClient.from('comments').update({ content: newContent.trim() }).eq('id', id);
+            fetchPosts();
         }
     }
 
@@ -590,7 +599,6 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => fetchPosts())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'game_scores' }, () => fetchLeaderboard()) // 監聽排行榜變化
             .subscribe();
     }
 
