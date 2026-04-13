@@ -302,7 +302,7 @@
         document.getElementById('menu-start-chat').onclick = () => { chatTarget = userId; showPage('chat'); };
     }
     
-    function hideUserMenu() { document.getElementById('user-action-menu').style.display = 'none'; }
+    function hideUserMenu() { document.getElementById('menu-start-chat').onclick = () => { openChat(userId); }; }
 
     function getImageUrl(path, forceRefresh = false) {
         if (!path) return null;
@@ -310,6 +310,12 @@
         const url = `${supabaseUrl}/storage/v1/object/public/avatars/${path}`;
         return forceRefresh ? `${url}?t=${Date.now()}` : url;
     }
+
+    function openChat(targetId) {
+        chatTarget = targetId; 
+        showPage('chat');
+        fetchMessages(); // 這是關鍵：強迫程式立即去抓私訊
+}
 
     async function loadProfileData() {
         const idToFetch = viewingUserId || currentUser.id;
@@ -329,7 +335,7 @@
             document.getElementById('profile-view-area').style.display = "block";
             document.getElementById('view-username').innerText = profile.username || "匿名";
             document.getElementById('view-bio').innerHTML = linkify(profile.bio) || "這個人很懶，什麼都沒留下...";
-            document.getElementById('btn-quick-chat').onclick = () => { chatTarget = idToFetch; showPage('chat'); };
+            document.getElementById('btn-quick-chat').onclick = () => { openChat(idToFetch); };
         }
     }
 
