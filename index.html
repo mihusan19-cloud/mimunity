@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>mimunity</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=1.1">
     <meta name="theme-color" content="#1877f2">
     <link rel="apple-touch-icon" href="icon-192.png">
     <style>
@@ -528,8 +528,33 @@
     async function handleLogout() { await supabaseClient.auth.signOut(); }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-        .then(() => console.log("Service Worker 註冊成功"));
+        // 加上 ?v=時間戳記，強制瀏覽器抓取最新的 sw.js 檔案
+        const swUrl = 'sw.js?v=' + new Date().getTime(); 
+        
+        navigator.serviceWorker.register(swUrl).then(reg => {
+            console.log("Service Worker 註冊成功");
+
+            // 偵測是否有新版本
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed') {
+                        if (navigator.serviceWorker.controller) {
+                            // 當發現有新內容時，彈出視窗詢問使用者
+                            if (confirm("發現新版本內容，是否立即更新並重新載入？")) {
+                                // 讓新的 Service Worker 立即接管並刷新頁面
+                                if (reg.waiting) {
+                                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                                window.location.reload();
+                            }
+                        }
+                    }
+                };
+            };
+        }).catch(err => {
+            console.log("Service Worker 註冊失敗", err);
+        });
     }
 </script>
 </body>
