@@ -62,49 +62,7 @@
         .menu-item { padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; transition: background 0.2s; }
         .menu-item:hover { background: #f0f2f5; }
 
-        /* --- 遊戲小區優化樣式 --- */
-        #game-area { 
-            background: linear-gradient(145deg, #ffffff, #f8f9fa);
-            border: 1px solid #e0e0e0;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.02), 0 10px 20px rgba(0,0,0,0.05);
-            text-align: center;
-        }
-
-        .game-btn { 
-            background: linear-gradient(135deg, #42b72a, #31a24c);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 120px;
-            height: 120px;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 6px 0 #237839, 0 10px 20px rgba(49, 162, 76, 0.3);
-            transition: all 0.1s;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .game-btn:active { 
-            transform: translateY(4px);
-            box-shadow: 0 2px 0 #237839;
-        }
-
-        /* 結算彈窗樣式 */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
+        
         .modal-content {
             background: white;
             padding: 30px;
@@ -136,7 +94,6 @@
 <nav id="main-nav">
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
     <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
-    <a onclick="showPage('game')" id="nav-game">🎮 遊戲小區</a>
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
 </nav>
 
@@ -184,30 +141,7 @@
             </div>
         </div>
     </div>
-
-    <div id="page-game" class="card">
-        <h2 style="text-align:center;">🎮 點擊挑戰賽</h2>
-        <div style="background: #e7f3ff; padding: 10px; border-radius: 50px; margin-bottom: 20px; font-size: 14px; text-align: center; border: 1px solid #c9e2ff;">
-            🏆 最高紀錄: <span id="game-highscore-display" style="font-weight: bold; color: #f5a623;">0</span>
-        </div>
-        
-        <div id="game-area">
-            <div id="game-timer" style="font-size: 32px; font-weight: bold; margin-bottom: 5px; color: var(--fb-gray);">10s</div>
-            <div id="game-score" style="font-size: 18px; color: var(--fb-gray); margin-bottom: 25px;">目前得分: 0</div>
-            
-            <div style="height: 150px; display: flex; justify-content: center; align-items: center;">
-                <button id="game-main-btn" class="btn-primary" style="width: 150px; padding: 15px;" onclick="startGame()">開始遊戲</button>
-                <button id="game-click-btn" class="game-btn" onclick="hitGame()" style="display: none;">TAP!</button>
-            </div>
-            <p id="game-status" style="margin-top: 15px; font-size: 14px; color: #888;">點擊按鈕開始計時</p>
-        </div>
-
-        <div style="margin-top: 20px;">
-            <h4>多人模式 (開發中)</h4>
-            <button class="btn-primary" style="background: #8e8e8e; cursor: not-allowed;">👥 與朋友對戰</button>
-        </div>
-    </div>
-
+   
     <div id="page-profile" class="card">
         <h2 id="profile-display-title" style="text-align:center;">個人檔案</h2>
         <div style="text-align:center; margin-bottom:20px;">
@@ -232,15 +166,6 @@
     </div>
 </div>
 
-<div id="result-modal" class="modal-overlay">
-    <div class="modal-content">
-        <h2 style="margin: 0;">遊戲結束！</h2>
-        <div class="result-score" id="final-score">0</div>
-        <p id="record-text" style="color: #31a24c; font-weight: bold; margin-bottom: 20px;"></p>
-        <button class="btn-primary" onclick="closeModal()">知道了</button>
-    </div>
-</div>
-
 <div id="user-action-menu">
     <div class="menu-item" id="menu-view-profile">👤 查看個人檔案</div>
     <div class="menu-item" id="menu-start-chat" style="color:var(--fb-blue); font-weight:bold;">💬 發送私訊</div>
@@ -249,17 +174,53 @@
 <script>
     const supabaseUrl = 'https://tofcvucrwcyvbmkywtaf.supabase.co';
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZmN2dWNyd2N5dmJta3l3dGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Mjk4MDcsImV4cCI6MjA4ODAwNTgwN30.NcgcbKVL9zR7_PM2L6mfYe2AIh5P1EnILRO9QN0j4Bg';
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    let currentUser = null;
-    let chatTarget = null;
-    let viewingUserId = null;
-    let userPresence = {};
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
+        auth: {
+            persistSession: true, // 開啟持久化儲存
+            autoRefreshToken: true
+        }
+    });
 
-    let gameScore = 0;
-    let gameTimer = 10;
-    let gameInterval = null;
-    let isGameRunning = false;
+    let currentUser = null, chatTarget = null, viewingUserId = null, userPresence = {};
+    let gameScore = 0, gameTimer = 10, gameInterval = null, isGameRunning = false;
+
+    // 2. 封裝初始化動作
+    async function onUserLoginSuccess(session) {
+        currentUser = session.user;
+        document.getElementById('main-nav').style.display = 'flex';
+        showPage('home');
+        await loadUserInfo();
+        setupPresence();
+        setupRealtime();
+        loadLocalHighScore();
+    }
+
+    // 3. 身份狀態監聽 (包含自動登入邏輯)
+    supabaseClient.auth.onAuthStateChange((ev, session) => {
+        console.log("Auth Event:", ev); // 調試用
+        if (session) {
+            onUserLoginSuccess(session);
+        } else {
+            currentUser = null;
+            document.getElementById('main-nav').style.display = 'none';
+            showPage('login');
+        }
+    });
+
+    // 4. 頁面載入時手動檢查一次 Session
+    window.addEventListener('load', async () => {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            onUserLoginSuccess(session);
+        }
+    });
+
+    //let currentUser = null;
+    //let chatTarget = null;
+    //let viewingUserId = null;
+    //let userPresence = {};
+
 
     function linkify(text) {
         if (!text) return "";
@@ -286,69 +247,7 @@
         }
     });
 
-    // --- 遊戲邏輯 ---
-    function loadLocalHighScore() {
-        const saved = localStorage.getItem('mimunity_game_highscore') || 0;
-        document.getElementById('game-highscore-display').innerText = saved;
-    }
-
-    function startGame() {
-        if(isGameRunning) return;
-        isGameRunning = true;
-        gameScore = 0;
-        gameTimer = 10;
-        
-        const timerEl = document.getElementById('game-timer');
-        timerEl.classList.remove('timer-danger');
-        timerEl.innerText = "10s";
-        
-        document.getElementById('game-score').innerText = "目前得分: 0";
-        document.getElementById('game-status').innerText = "衝啊！！快點擊！";
-        document.getElementById('game-main-btn').style.display = "none";
-        document.getElementById('game-click-btn').style.display = "inline-block";
-        
-        gameInterval = setInterval(() => {
-            gameTimer--;
-            timerEl.innerText = gameTimer + "s";
-            
-            if(gameTimer <= 3) {
-                timerEl.classList.add('timer-danger');
-            }
-
-            if(gameTimer <= 0) endGame();
-        }, 1000);
-    }
-
-    function hitGame() {
-        if(!isGameRunning) return;
-        gameScore++;
-        document.getElementById('game-score').innerText = "目前得分: " + gameScore;
-    }
-
-    function endGame() {
-        clearInterval(gameInterval);
-        isGameRunning = false;
-        
-        document.getElementById('game-main-btn').style.display = "block";
-        document.getElementById('game-main-btn').innerText = "再次挑戰";
-        document.getElementById('game-click-btn').style.display = "none";
-        document.getElementById('game-status').innerText = "時間到！";
-
-        const currentHigh = parseInt(localStorage.getItem('mimunity_game_highscore') || 0);
-        const recordText = document.getElementById('record-text');
-        
-        if(gameScore > currentHigh) {
-            localStorage.setItem('mimunity_game_highscore', gameScore);
-            loadLocalHighScore();
-            recordText.innerText = "✨ 恭喜打破個人紀錄！ ✨";
-        } else {
-            recordText.innerText = "再接再厲！";
-        }
-
-        document.getElementById('final-score').innerText = gameScore;
-        document.getElementById('result-modal').style.display = 'flex';
-    }
-
+   
     function closeModal() {
         document.getElementById('result-modal').style.display = 'none';
     }
