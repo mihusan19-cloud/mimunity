@@ -216,10 +216,6 @@
         }
     });
 
-    //let currentUser = null;
-    //let chatTarget = null;
-    //let viewingUserId = null;
-    //let userPresence = {};
 
 
     function linkify(text) {
@@ -299,10 +295,14 @@
         menu.style.top = e.pageY + 'px';
         menu.style.left = e.pageX + 'px';
         document.getElementById('menu-view-profile').onclick = () => { viewingUserId = userId; showPage('profile'); };
-        document.getElementById('menu-start-chat').onclick = () => { chatTarget = userId; showPage('chat'); };
+        document.getElementById('menu-start-chat').onclick = () => { openChat(userId); };
     }
     
-    function hideUserMenu() { document.getElementById('menu-start-chat').onclick = () => { openChat(userId); }; }
+    // 原本：function hideUserMenu() { document.getElementById('menu-start-chat').onclick = () => { openChat(userId); }; }
+    // 應改為：
+    function hideUserMenu() { 
+        document.getElementById('user-action-menu').style.display = 'none'; 
+}
 
     function getImageUrl(path, forceRefresh = false) {
         if (!path) return null;
