@@ -563,7 +563,7 @@
     if ('serviceWorker' in navigator) {
         // 關鍵修正：不要用 getTime()，改用固定的版本號
         // 只有當你真的改了程式碼，才手動把 v=1.0.1 改成 v=1.0.2
-        const swUrl = 'sw.js?v=1.0.1'; 
+        const swUrl = 'sw.js?v=1.0.3'; 
         
         navigator.serviceWorker.register(swUrl).then(reg => {
             console.log("Service Worker 註冊成功");
