@@ -53,7 +53,65 @@
         .msg-container { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; }
         .msg-me { align-self: flex-end; flex-direction: row-reverse; }
         .msg-other { align-self: flex-start; }
-        .chat-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #eee; }
+        /* 頭像縮小避免擋字 */
+.chat-avatar {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+/* 在線狀態 → 右下角 */
+.status-dot {
+    bottom: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+}
+
+/* 頭像特效選單 */
+.fx-list {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px;
+}
+
+.fx-item {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.fx-item.selected {
+    border: 2px solid #1877f2;
+}
+
+.fx-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.preview-avatar {
+    width: 80px;
+    height: 80px;
+}
+
+.preview-avatar .chat-avatar {
+    width: 100%;
+    height: 100%;
+}
+
+.preview-avatar .avatar-decoration {
+    width: 130%;
+    height: 130%;
+    top: -15%;
+    left: -15%;
+}
         .bubble { padding: 10px 15px; border-radius: 18px; font-size: 14px; position: relative; overflow-wrap: anywhere; }
         .msg-me .bubble { background: var(--fb-blue); color: white; }
         .msg-other .bubble { background: #e4e6eb; color: black; }
@@ -93,8 +151,8 @@
         .avatar-wrapper {
             position: relative;
             display: inline-block;
-            width: 32px;  /* 與 chat-avatar 一致 */
-            height: 32px;
+            width: 40px;  /* 與 chat-avatar 一致 */
+            height: 40px;
             flex-shrink: 0;
             vertical-align: middle;
         }
@@ -128,6 +186,7 @@
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
     <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
+    <a onclick="showPage('avatarfx')" id="nav-avatarfx">✨ 頭像特效(施工中)</a>
     <a onclick="toggleNotification()" id="notif-btn" style="color: var(--fb-gray);">開啟通知</a>
 </nav>
 
@@ -197,6 +256,43 @@
             <button class="btn-primary" id="btn-quick-chat">💬 發送私訊</button>
             <button class="btn-primary" style="background:#8e8e8e; margin-top:10px;" onclick="showPage('home')">返回首頁</button>
         </div>
+
+    <div id="page-avatarfx" class="card">
+    <h2 style="text-align:center;">✨ 頭像特效</h2>
+
+    <!-- 預覽 -->
+    <div style="display:flex; justify-content:center; margin:20px 0;">
+        <div class="avatar-wrapper preview-avatar">
+            <img id="fx-preview-avatar" class="chat-avatar">
+            <img id="fx-preview-effect" class="avatar-decoration">
+        </div>
+    </div>
+
+    <!-- 特效選單 -->
+    <div class="fx-list">
+        <div class="fx-item selected" data-fx="">
+            <div class="fx-circle">✔</div>
+        </div>
+
+        <div class="fx-item" data-fx="fx1.png">
+            <img src="fx1.png">
+        </div>
+
+        <div class="fx-item" data-fx="fx2.png">
+            <img src="fx2.png">
+        </div>
+
+        <div class="fx-item" data-fx="fx3.png">
+            <img src="fx3.png">
+        </div>
+
+        <div class="fx-item" data-fx="fx4.png">
+            <img src="fx4.png">
+        </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveAvatarFx()">套用特效</button>
+</div>
     </div>
 </div>
 
@@ -343,6 +439,7 @@ supabaseClient.auth.onAuthStateChange((ev, session) => {
         if(p === 'home' && document.getElementById('posts-list').innerHTML === "") fetchPosts();
         if(p === 'chat' && document.getElementById('chat-box').innerHTML === "") { fetchUserList(); fetchMessages(); }
         if(p === 'profile') loadProfileData();
+        if(p === 'avatarfx') initAvatarFx();
     }
 
     function showUserMenu(e, userId) {
@@ -561,9 +658,6 @@ supabaseClient.auth.onAuthStateChange((ev, session) => {
              onclick="showUserMenu(event, '${m.user_id}')"
              onerror="this.src='https://via.placeholder.com/32'">
 
-        <!-- 頭像特效（可改圖） -->
-        <img src="https://cdn-icons-png.flaticon.com/512/616/616494.png" 
-             class="avatar-decoration">
     </div>
 
     <div class="bubble">
@@ -679,7 +773,7 @@ supabaseClient.auth.onAuthStateChange((ev, session) => {
     if ('serviceWorker' in navigator) {
         // 關鍵修正：不要用 getTime()，改用固定的版本號
         // 只有當你真的改了程式碼，才手動把 v=1.0.1 改成 v=1.0.2
-        const swUrl = 'sw.js?v=1.0.7'; 
+        const swUrl = 'sw.js?v=1.0.8'; 
         
         navigator.serviceWorker.register(swUrl).then(reg => {
             console.log("Service Worker 註冊成功");
@@ -701,7 +795,56 @@ supabaseClient.auth.onAuthStateChange((ev, session) => {
             console.error("Service Worker 註冊失敗", err);
         });
     }
+let selectedFx = "";
 
+async function initAvatarFx() {
+    if (!currentUser) return;
+
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('avatar_url, avatar_fx')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (!data) return;
+
+    const avatar = document.getElementById('fx-preview-avatar');
+    if (avatar) {
+        avatar.src = getImageUrl(data.avatar_url) || "https://via.placeholder.com/80";
+    }
+
+    selectedFx = data.avatar_fx || "";
+    updateFxPreview();
+}
+
+// 點擊選擇
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.fx-item')) {
+        document.querySelectorAll('.fx-item').forEach(el => el.classList.remove('selected'));
+        const item = e.target.closest('.fx-item');
+        item.classList.add('selected');
+
+        selectedFx = item.dataset.fx;
+        updateFxPreview();
+    }
+});
+
+// 更新預覽
+function updateFxPreview() {
+    const fx = document.getElementById('fx-preview-effect');
+    fx.src = selectedFx || "";
+    fx.style.display = selectedFx ? "block" : "none";
+}
+
+// 儲存
+async function saveAvatarFx() {
+    await supabaseClient
+        .from('profiles')
+        .update({ avatar_fx: selectedFx })
+        .eq('id', currentUser.id);
+
+    alert("特效已套用！");
+}
         
 </script>
 </body>
