@@ -87,14 +87,48 @@
             50% { transform: translate(-1px, -1px); }
             100% { transform: translate(1px, -1px); }
         }
-    </style>
-</head>
+        /* 你原本其他的 CSS ... */
+
+        /* 聊天室頭像特效定位 */
+        .avatar-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 32px;  /* 與 chat-avatar 一致 */
+            height: 32px;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
+        /* 原始頭像層 */
+        .chat-avatar {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 疊在上面的特效層 */
+        .avatar-decoration {
+            position: absolute;
+            top: -12%; 
+            left: -12%;
+            width: 124%; 
+            height: 124%;
+            pointer-events: none; /* 點擊穿透 */
+            z-index: 2;
+            object-fit: contain;
+        }
+    </style> </head>
 <body onclick="hideUserMenu()">
 
 <nav id="main-nav">
     <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
     <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
     <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
+    <a onclick="toggleNotification()" id="notif-btn" style="color: var(--fb-gray);">開啟通知</a>
 </nav>
 
 <div class="container">
@@ -196,28 +230,51 @@
         loadLocalHighScore();
     }
 
-    // 3. 身份狀態監聽 (包含自動登入邏輯)
-    supabaseClient.auth.onAuthStateChange((ev, session) => {
-        console.log("Auth Event:", ev); // 調試用
-        if (session) {
-            onUserLoginSuccess(session);
-        } else {
-            currentUser = null;
-            document.getElementById('main-nav').style.display = 'none';
-            showPage('login');
+    // 修正後的身份狀態監聽
+supabaseClient.auth.onAuthStateChange((ev, session) => {
+    console.log("Auth Event:", ev);
+    if (session) {
+        onUserLoginSuccess(session);
+        
+        // --- 在這裡檢查通知權限，確保只在登入成功後檢查一次 ---
+        if ("Notification" in window) {
+            updateNotifBtn(Notification.permission);
         }
-    });
+    } else {
+        currentUser = null;
+        document.getElementById('main-nav').style.display = 'none';
+        showPage('login');
+    }
+});
 
     // 4. 頁面載入時手動檢查一次 Session
     window.addEventListener('load', async () => {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             onUserLoginSuccess(session);
+        // ---【新增：自動檢查通知權限】---
+        if ("Notification" in window) {
+            updateNotifBtn(Notification.permission);
         }
+        // ----------------------------
+    }
+        }
+    );
+
+
+    function escapeHTML(str) {
+    if (!str) return "";
+    return str.replace(/[&<>"']/g, function(tag) {
+        const chars = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+        return chars[tag] || tag;
     });
-
-
-
+}
     function linkify(text) {
         if (!text) return "";
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -228,20 +285,20 @@
         });
     }
 
-    supabaseClient.auth.onAuthStateChange((ev, session) => {
-        if (session) {
-            currentUser = session.user;
-            document.getElementById('main-nav').style.display = 'flex';
-            showPage('home');
-            loadUserInfo();
-            setupPresence();
-            setupRealtime();
-            loadLocalHighScore();
-        } else {
-            document.getElementById('main-nav').style.display = 'none';
-            showPage('login');
-        }
-    });
+    //supabaseClient.auth.onAuthStateChange((ev, session) => {
+        //if (session) {
+            //currentUser = session.user;
+            //document.getElementById('main-nav').style.display = 'flex';
+            //showPage('home');
+            //loadUserInfo();
+            //setupPresence();
+            //setupRealtime();
+            //loadLocalHighScore();
+        //} else {
+            //document.getElementById('main-nav').style.display = 'none';
+            //showPage('login');
+        //}
+    //});
 
    
     function closeModal() {
@@ -301,7 +358,8 @@
     // 原本：function hideUserMenu() { document.getElementById('menu-start-chat').onclick = () => { openChat(userId); }; }
     // 應改為：
     function hideUserMenu() { 
-        document.getElementById('user-action-menu').style.display = 'none'; 
+    const menu = document.getElementById('user-action-menu');
+    if (menu) menu.style.display = 'none'; 
 }
 
     function getImageUrl(path, forceRefresh = false) {
@@ -345,7 +403,7 @@
         list.innerHTML = (posts || []).map(p => {
             const hasLiked = p.post_likes?.some(l => l.user_id === currentUser.id);
             const postImg = getImageUrl(p.image_url);
-            const postContent = linkify(p.content);
+            const postContent = linkify(escapeHTML(p.content));
             return `
                 <div class="post-card">
                     <div class="post-header">
@@ -496,9 +554,26 @@
                     </div>` : `<img src="${imgUrl}" style="max-width:100%; border-radius:8px; margin-top:5px;" loading="lazy" onload="scrollToBottom()">`;
             }
             return `<div class="msg-container ${isMe ? 'msg-me':'msg-other'}">
-                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" style="cursor:pointer" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
-                <div class="bubble"><div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${m.profiles?.username || '未知用戶'}</div><div>${content}</div>${file}</div>
-            </div>`;
+
+    <div class="avatar-wrapper">
+        <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" 
+             class="chat-avatar"
+             onclick="showUserMenu(event, '${m.user_id}')"
+             onerror="this.src='https://via.placeholder.com/32'">
+
+        <!-- 頭像特效（可改圖） -->
+        <img src="https://cdn-icons-png.flaticon.com/512/616/616494.png" 
+             class="avatar-decoration">
+    </div>
+
+    <div class="bubble">
+        <div style="font-size:10px; opacity:0.7; margin-bottom:3px;">
+            ${escapeHTML(m.profiles?.username || '未知用戶')}
+        </div>
+        <div>${content}</div>
+        ${file}
+    </div>
+</div>`;
         }).join('');
         
         scrollToBottom();
@@ -525,14 +600,26 @@
         input.value = ""; fileInput.value = ""; document.getElementById('chat-is-spoiler').checked = false; fetchMessages();
     }
 
+    let messageChannel = null; // 放在 function 外面
+
     function setupRealtime() {
-        supabaseClient.channel('any')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchMessages())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchPosts())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => fetchPosts())
-            .subscribe();
-    }
+        // 如果舊頻道存在，先移除，防止重複訂閱噴錯
+        if (messageChannel) {
+            supabaseClient.removeChannel(messageChannel);
+        }
+    messageChannel = supabaseClient.channel('any')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+            const newMsg = payload.new;
+            if (newMsg.user_id !== currentUser.id && Notification.permission === "granted" && document.hidden) {
+                new Notification("收到新訊息", { body: newMsg.content || "傳送了一個檔案", icon: "icon-192.png" });
+            }
+            fetchMessages(); 
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchPosts())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => fetchPosts())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => fetchPosts())
+        .subscribe();
+}
 
     async function loadUserInfo() {
         const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
@@ -560,6 +647,35 @@
     async function handleSignUp() { await supabaseClient.auth.signUp({ email: document.getElementById('reg-email').value, password: document.getElementById('reg-password').value }); alert("請收信！"); }
     async function handleLogout() { await supabaseClient.auth.signOut(); }
 
+    // 2. 更新通知按鈕 UI 的狀態
+    function updateNotifBtn(status) {
+        const btn = document.getElementById('notif-btn');
+        if (!btn) return;
+        if (status === "granted") {
+            btn.innerText = "🔔 通知已開啟";
+            btn.style.color = "var(--fb-green)";
+        } else if (status === "denied") {
+            btn.innerText = "🚫 通知被封鎖";
+            btn.style.color = "red";
+        } else {
+            btn.innerText = "開啟通知";
+            btn.style.color = "var(--fb-gray)";
+        }
+    }
+
+    // 3. 請求權限與切換功能
+    async function toggleNotification() {
+        if (!("Notification" in window)) {
+            alert("此瀏覽器不支援通知");
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        updateNotifBtn(permission);
+        if (permission === "granted") {
+            new Notification("mimunity", { body: "通知功能已成功啟動！", icon: "icon-192.png" });
+        }
+    }
+
     if ('serviceWorker' in navigator) {
         // 關鍵修正：不要用 getTime()，改用固定的版本號
         // 只有當你真的改了程式碼，才手動把 v=1.0.1 改成 v=1.0.2
@@ -585,6 +701,8 @@
             console.error("Service Worker 註冊失敗", err);
         });
     }
+
+        
 </script>
 </body>
 </html>
