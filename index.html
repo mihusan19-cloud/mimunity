@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>mimunity</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="js/config.js"></script>
+    <script defer src="js/utils.js"></script>
+    <script defer src="js/notification.js"></script>
+    <script defer src="js/app.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/profile.js"></script>
+    <script defer src="js/chat.js"></script>
+    <script defer src="js/notebook.js"></script>
+    <script defer src="js/avatarfx.js"></script>
     <link rel="manifest" href="manifest.json?v=1.1">
     <meta name="theme-color" content="#1877f2">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -65,10 +74,42 @@
         </div>
     </div>
    
+    <div id="page-notebook" class="card">
+        <h2 style="text-align:center;">好友記事本</h2>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:15px;">
+            <div id="notebook-friend-label" style="font-weight:bold; flex:1; min-width:180px;">請從好友列表打開記事本</div>
+            <button class="btn-primary" style="width:auto;" onclick="createNewNotebook('text')">新增文字記事</button>
+            <button class="btn-primary" style="width:auto; background:#42b72a;" onclick="createNewNotebook('table')">新增表格記事</button>
+        </div>
+        <div id="notebook-list"></div>
+        <div id="notebook-editor" style="display:none; margin-top:20px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="notebook-title" placeholder="記事本標題" style="flex:1; min-width:200px;">
+                <button class="btn-primary" style="width:auto;" onclick="saveNotebook()">儲存記事</button>
+                <button class="btn-primary" style="width:auto; background:#8e8e8e;" onclick="closeNotebookEditor()">取消</button>
+            </div>
+            <div id="notebook-type-controls" style="margin-top:10px; font-size:14px; color:#555;"></div>
+            <div id="notebook-text-area" style="display:none; margin-top:10px;">
+                <textarea id="notebook-content" rows="10" placeholder="輸入記事內容..."></textarea>
+            </div>
+            <div id="notebook-table-area" style="display:none; margin-top:10px;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <input type="number" id="notebook-table-rows" min="1" value="3" style="width:80px;" placeholder="列">
+                    <input type="number" id="notebook-table-cols" min="1" value="3" style="width:80px;" placeholder="欄">
+                    <button class="btn-primary" style="width:auto;" onclick="buildNotebookTable()">建立表格</button>
+                </div>
+                <div id="notebook-table-editor" style="margin-top:10px;"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="page-profile" class="card">
         <h2 id="profile-display-title" style="text-align:center;">個人檔案</h2>
         <div style="text-align:center; margin-bottom:20px;">
-            <img id="p-img" src="" style="width:120px; height:120px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); object-fit:cover; background:#eee;">
+            <div class="avatar-wrapper preview-avatar" style="width:120px; height:120px; margin:0 auto;">
+                <img id="p-img" src="" onerror="this.src='https://via.placeholder.com/120'" style="width:120px; height:120px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); object-fit:cover; background:#eee; position:relative; z-index:1;">
+                <img id="p-img-effect" class="avatar-decoration" src="" style="display:none;">
+            </div>
         </div>
         <div id="profile-edit-area">
             <input type="file" id="avatar-file" accept="image/*">
@@ -96,37 +137,36 @@
         </div>
         <div class="fx-list">
             <div class="fx-item selected" data-fx="">
-                <div class="fx-circle">✔</div>
+                <span class="fx-empty-label">無</span>
             </div>
-            <div class="fx-item" data-fx="images/fx1.png">
-                <img src="images/fx1.png">
+            <div class="fx-item" data-fx="effects/fx1.svg">
+                <img src="effects/fx1.svg" alt="fx1">
             </div>
-            <div class="fx-item" data-fx="images/fx2.png">
-                <img src="images/fx2.png">
+            <div class="fx-item" data-fx="effects/fx2.svg">
+                <img src="effects/fx2.svg" alt="fx2">
             </div>
-            <div class="fx-item" data-fx="images/fx3.png">
-                <img src="images/fx3.png">
+            <div class="fx-item" data-fx="effects/fx3.svg">
+                <img src="effects/fx3.svg" alt="fx3">
             </div>
-            <div class="fx-item" data-fx="images/fx4.png">
-                <img src="images/fx4.png">
+            <div class="fx-item" data-fx="effects/fx4.svg">
+                <img src="effects/fx4.svg" alt="fx4">
+            </div>
+            <div class="fx-item" data-fx="effects/fx5.svg">
+                <img src="effects/fx5.svg" alt="fx5">
+            </div>
+            <div class="fx-item" data-fx="effects/fx6.svg">
+                <img src="effects/fx6.svg" alt="fx6">
             </div>
         </div>
-        <button class="btn-primary" onclick="saveAvatarFx()">套用特效</button>
+        <button class="btn-primary" style="margin-top:10px;" onclick="saveAvatarFx()">套用特效</button>
     </div>
 </div>
 
 <div id="user-action-menu">
     <div class="menu-item" id="menu-view-profile">👤 查看個人檔案</div>
+    <div class="menu-item" id="menu-open-notebook">🗒 好友記事本</div>
     <div class="menu-item" id="menu-start-chat" style="color:var(--fb-blue); font-weight:bold;">💬 發送私訊</div>
 </div>
 
-<script src="js/config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/notification.js"></script>
-<script src="js/app.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/avatarfx.js"></script>
 </body>
 </html>

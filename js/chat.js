@@ -23,9 +23,11 @@ async function fetchUserList() {
     listEl.innerHTML = (users || []).map(u => {
         if (u.id === currentUser.id) return '';
         const isOnline = userPresence[u.id];
+        const effectImg = u.avatar_fx ? `<img src="${escapeHTML(u.avatar_fx)}" class="avatar-decoration avatar-decoration-image" alt="avatar effect">` : '';
         return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
             <div class="avatar-wrapper">
                 <img src="${getImageUrl(u.avatar_url) || ''}" class="chat-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                ${effectImg}
                 <div class="status-dot ${isOnline ? 'online' : ''}"></div>
             </div>
             <div style="font-size:10px;">${escapeHTML(u.username || '匿名')}</div>
@@ -68,10 +70,12 @@ async function fetchMessages() {
                 </div>` :
                 `<img src="${imgUrl}" style="max-width:100%; border-radius:8px; margin-top:5px;" loading="lazy" onload="scrollToBottom()">`;
         }
+        const profileFx = m.profiles?.avatar_fx;
+        const profileFxImg = profileFx ? `<img src="${escapeHTML(profileFx)}" class="avatar-decoration avatar-decoration-image" alt="avatar effect">` : '';
         return `<div class="msg-container ${isMe ? 'msg-me' : 'msg-other'}">
             <div class="avatar-wrapper">
                 <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
-                ${m.profiles?.avatar_fx ? `<img src="${m.profiles.avatar_fx}" class="avatar-decoration">` : ''}
+                ${profileFxImg}
             </div>
             <div class="bubble">
                 <div style="font-size:10px; opacity:0.7; margin-bottom:3px;">${escapeHTML(m.profiles?.username || '未知用戶')}</div>

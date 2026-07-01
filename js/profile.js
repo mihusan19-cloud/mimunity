@@ -42,6 +42,14 @@ async function loadProfileData() {
     }
 
     document.getElementById('p-img').src = getImageUrl(profileData.avatar_url) || 'https://via.placeholder.com/120';
+    const effectElement = document.getElementById('p-img-effect');
+    const effectValue = profileData.avatar_fx || '';
+    if (effectElement) {
+        effectElement.src = effectValue;
+        effectElement.style.display = effectValue ? 'block' : 'none';
+        effectElement.className = 'avatar-decoration avatar-decoration-image';
+    }
+
     if (isSelf) {
         document.getElementById('profile-display-title').innerText = '我的個人檔案';
         document.getElementById('profile-edit-area').style.display = 'block';
@@ -93,7 +101,7 @@ async function saveProfile() {
 async function fetchPosts() {
     const list = document.getElementById('posts-list');
     const { data: posts, error } = await supabaseClient.from('posts')
-        .select('*, profiles(username, avatar_url), post_likes(user_id), comments(*, profiles(username))')
+        .select('*, profiles(username, avatar_url, avatar_fx), post_likes(user_id), comments(*, profiles(username))')
         .order('created_at', { ascending: false });
     if (error) {
         console.error('fetchPosts error:', error);
@@ -141,10 +149,14 @@ function renderPosts(posts) {
                         ${commentActions}
                     </div>`;
         }).join('');
+        const authorFxImg = p.profiles?.avatar_fx ? `<img src="${escapeHTML(p.profiles.avatar_fx)}" class="avatar-decoration avatar-decoration-image" alt="avatar effect">` : '';
         return `<div class="post-card">
                 <div class="post-header">
                     <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
-                        <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                        <div class="avatar-wrapper post-avatar-wrapper">
+                            <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                            ${authorFxImg}
+                        </div>
                         <b>${escapeHTML(p.profiles?.username || '匿名')}</b>
                     </div>
                     ${editActions}

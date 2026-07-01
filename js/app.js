@@ -1,5 +1,6 @@
 function showPage(p) {
     if (p !== 'profile') viewingUserId = null;
+    if (p !== 'notebook') notebookTarget = null;
     document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
     const targetPage = document.getElementById('page-' + p);
@@ -10,6 +11,7 @@ function showPage(p) {
     if (p === 'home' && document.getElementById('posts-list').innerHTML === '') fetchPosts();
     if (p === 'chat' && document.getElementById('chat-box').innerHTML === '') { fetchUserList(); fetchMessages(); }
     if (p === 'profile') loadProfileData();
+    if (p === 'notebook') loadFriendNotebooks();
     if (p === 'avatarfx') initAvatarFx();
 }
 
@@ -21,6 +23,7 @@ function showUserMenu(e, userId) {
     menu.style.top = e.pageY + 'px';
     menu.style.left = e.pageX + 'px';
     document.getElementById('menu-view-profile').onclick = () => { viewingUserId = userId; showPage('profile'); };
+    document.getElementById('menu-open-notebook').onclick = () => { notebookTarget = userId; openFriendNotebook(userId); };
     document.getElementById('menu-start-chat').onclick = () => { openChat(userId); };
 }
 

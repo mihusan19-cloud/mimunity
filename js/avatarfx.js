@@ -7,6 +7,9 @@ async function initAvatarFx() {
         avatar.src = getImageUrl(data.avatar_url) || 'https://via.placeholder.com/80';
     }
     selectedFx = data.avatar_fx || '';
+    document.querySelectorAll('.fx-item').forEach(el => {
+        el.classList.toggle('selected', el.dataset.fx === selectedFx);
+    });
     updateFxPreview();
 }
 
@@ -22,11 +25,18 @@ document.addEventListener('click', (e) => {
 function updateFxPreview() {
     const fx = document.getElementById('fx-preview-effect');
     if (!fx) return;
-    fx.src = selectedFx || '';
-    fx.style.display = selectedFx ? 'block' : 'none';
+    if (!selectedFx) {
+        fx.style.display = 'none';
+        fx.classList.remove('avatar-decoration-image');
+        fx.src = '';
+        return;
+    }
+    fx.className = 'avatar-decoration avatar-decoration-image';
+    fx.src = selectedFx;
+    fx.style.display = 'block';
 }
 
 async function saveAvatarFx() {
-    await supabaseClient.from('profiles').update({ avatar_fx: selectedFx }).eq('id', currentUser.id);
+    await supabaseClient.from('profiles').update({ avatar_fx: selectedFx || null }).eq('id', currentUser.id);
     alert('特效已套用！');
 }

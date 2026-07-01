@@ -11,7 +11,10 @@ const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
 let currentUser = null;
 let chatTarget = null;
 let viewingUserId = null;
+let notebookTarget = null;
+let currentNotebookId = null;
 let userPresence = {};
 let presenceChannel = null;
 let messageChannel = null;
 let selectedFx = "";
+const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';

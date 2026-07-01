@@ -25,7 +25,9 @@ function linkify(text) {
 function getImageUrl(path, forceRefresh = false) {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    const url = `${supabaseUrl}/storage/v1/object/public/avatars/${path}`;
+    const normalized = path.replace(/^\/+/, '');
+    const encodedPath = normalized.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    const url = `${supabaseUrl}/storage/v1/object/public/avatars/${encodedPath}`;
     return forceRefresh ? `${url}?t=${Date.now()}` : url;
 }
 
