@@ -1,27 +1,67 @@
+function getNotebookStorageKey(targetId = notebookTarget || currentUser?.id || 'self') {
+    const userId = currentUser?.id || 'guest';
+    const friendId = targetId || userId;
+    return `mimunity-notebooks-${userId}-${friendId}`;
+}
+
+function getStoredNotebooks(targetId = notebookTarget || currentUser?.id || 'self') {
+    try {
+        const raw = localStorage.getItem(getNotebookStorageKey(targetId));
+        return raw ? JSON.parse(raw) : [];
+    } catch (error) {
+        console.error('getStoredNotebooks error:', error);
+        return [];
+    }
+}
+
+function saveStoredNotebooks(notebooks, targetId = notebookTarget || currentUser?.id || 'self') {
+    try {
+        localStorage.setItem(getNotebookStorageKey(targetId), JSON.stringify(notebooks));
+    } catch (error) {
+        console.error('saveStoredNotebooks error:', error);
+    }
+}
+
 async function loadFriendNotebooks() {
+    if (!currentUser) return;
     if (!notebookTarget) {
-        document.getElementById('notebook-friend-label').innerText = '請從好友列表打開記事本';
-        document.getElementById('notebook-list').innerHTML = '<div style="color:#777;">尚未選擇好友記事本。</div>';
-        document.getElementById('notebook-editor').style.display = 'none';
-        return;
+        notebookTarget = currentUser.id;
     }
 
-    const { data: friend, error: friendError } = await supabaseClient.from('profiles').select('username').eq('id', notebookTarget).single();
-    if (friendError) return console.error('loadFriendNotebooks friend error:', friendError);
-    document.getElementById('notebook-friend-label').innerText = `好友：${friend.username || '匿名'} 的記事本`;
+    const targetId = notebookTarget;
+    const { data: friend, error: friendError } = await supabaseClient.from('profiles').select('username').eq('id', targetId).single();
+    if (friendError) {
+        console.warn('loadFriendNotebooks friend error:', friendError);
+    }
+    document.getElementById('notebook-friend-label').innerText = friend && friend.username
+        ? `記事本：${friend.username}`
+        : '我的記事本';
 
-    const { data: notebooks, error } = await supabaseClient.from('notebooks')
-        .select('*')
-        .or(`and(owner_id.eq.${currentUser.id},friend_id.eq.${notebookTarget}),and(owner_id.eq.${notebookTarget},friend_id.eq.${currentUser.id})`)
-        .order('updated_at', { ascending: false });
-    if (error) return console.error('loadFriendNotebooks error:', error);
+    try {
+        const { data: notebooks, error } = await supabaseClient.from('notebooks')
+            .select('*')
+            .or(`and(owner_id.eq.${currentUser.id},friend_id.eq.${targetId}),and(owner_id.eq.${targetId},friend_id.eq.${currentUser.id})`)
+            .order('updated_at', { ascending: false });
+        if (error) throw error;
+        const list = notebooks || [];
+        saveStoredNotebooks(list, targetId);
+        renderNotebookList(list, targetId);
+        return;
+    } catch (error) {
+        console.error('loadFriendNotebooks error:', error);
+    }
 
+    const localNotebooks = getStoredNotebooks(targetId);
+    renderNotebookList(localNotebooks, targetId);
+}
+
+function renderNotebookList(notebooks, targetId) {
     const listHtml = (notebooks || []).map(nb => `
         <div class="post-card" style="border-color:#ccc;">
             <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
                 <div>
                     <div style="font-weight:bold;">${escapeHTML(nb.title || '未命名記事')}</div>
-                    <div style="font-size:12px; color:#666;">${nb.type === 'table' ? '表格記事' : '文字記事'} · 最近編輯 ${new Date(nb.updated_at).toLocaleString()}</div>
+                    <div style="font-size:12px; color:#666;">${nb.type === 'table' ? '表格記事' : '文字記事'} · 最近編輯 ${new Date(nb.updated_at || nb.created_at || Date.now()).toLocaleString()}</div>
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button class="btn-primary" style="width:auto; padding:8px 12px;" onclick="openNotebook('${nb.id}')">打開</button>
@@ -40,13 +80,14 @@ async function loadFriendNotebooks() {
 }
 
 async function openFriendNotebook(friendId) {
-    notebookTarget = friendId;
+    notebookTarget = friendId || currentUser?.id;
     currentNotebookId = null;
     showPage('notebook');
 }
 
 function createNewNotebook(type) {
-    if (!notebookTarget) return alert('請先從好友列表打開好友記事本。');
+    if (!currentUser) return alert('請先登入。');
+    if (!notebookTarget) notebookTarget = currentUser.id;
     currentNotebookId = null;
     document.getElementById('notebook-title').value = '';
     document.getElementById('notebook-content').value = '';
@@ -90,18 +131,19 @@ function buildNotebookTable() {
 
 async function saveNotebook() {
     const title = document.getElementById('notebook-title').value.trim();
-    const type = document.getElementById('notebook-editor').dataset.type;
+    const type = document.getElementById('notebook-editor').dataset.type || 'text';
     const content = type === 'text' ? document.getElementById('notebook-content').value : '';
     let table = null;
     if (type === 'table') {
-        const rows = Array.from(document.querySelectorAll('#notebook-table-editor tr')).map(tr =>
+        table = Array.from(document.querySelectorAll('#notebook-table-editor tr')).map(tr =>
             Array.from(tr.children).map(td => td.innerText)
         );
-        table = rows;
     }
-    if (!notebookTarget) return alert('沒有選擇好友記事本。');
+    if (!currentUser) return alert('請先登入。');
+    if (!notebookTarget) notebookTarget = currentUser.id;
     if (!title) return alert('請輸入記事本標題。');
 
+    const timestamp = new Date().toISOString();
     const payload = {
         owner_id: currentUser.id,
         friend_id: notebookTarget,
@@ -109,27 +151,61 @@ async function saveNotebook() {
         type,
         content,
         table_data: table,
-        updated_at: new Date().toISOString()
+        updated_at: timestamp
     };
 
-    if (currentNotebookId) {
-        await supabaseClient.from('notebooks').update(payload).eq('id', currentNotebookId);
-    } else {
-        payload.created_at = new Date().toISOString();
-        const { error } = await supabaseClient.from('notebooks').insert([payload]);
-        if (error) return console.error('saveNotebook error:', error);
+    try {
+        let savedId = currentNotebookId;
+        if (currentNotebookId) {
+            const { error } = await supabaseClient.from('notebooks').update(payload).eq('id', currentNotebookId);
+            if (error) throw error;
+        } else {
+            payload.created_at = timestamp;
+            const { data, error } = await supabaseClient.from('notebooks').insert([payload]).select();
+            if (error) throw error;
+            savedId = data && data[0] ? data[0].id : `${Date.now()}`;
+        }
+
+        const storedNotebooks = getStoredNotebooks(notebookTarget);
+        const nextNotebooks = currentNotebookId
+            ? storedNotebooks.map(nb => nb.id === currentNotebookId ? { ...nb, ...payload, id: currentNotebookId } : nb)
+            : [...storedNotebooks, { ...payload, id: savedId }];
+        saveStoredNotebooks(nextNotebooks, notebookTarget);
+        closeNotebookEditor();
+        loadFriendNotebooks();
+    } catch (error) {
+        console.error('saveNotebook error:', error);
+        const storedNotebooks = getStoredNotebooks(notebookTarget);
+        const fallbackId = currentNotebookId || `${Date.now()}`;
+        const fallbackNotebooks = currentNotebookId
+            ? storedNotebooks.map(nb => nb.id === currentNotebookId ? { ...nb, ...payload, id: currentNotebookId } : nb)
+            : [...storedNotebooks, { ...payload, id: fallbackId }];
+        saveStoredNotebooks(fallbackNotebooks, notebookTarget);
+        alert('儲存失敗，已改為暫存到本機。');
+        closeNotebookEditor();
+        loadFriendNotebooks();
     }
-    closeNotebookEditor();
-    loadFriendNotebooks();
 }
 
 async function openNotebook(id) {
     currentNotebookId = id;
-    const { data: note, error } = await supabaseClient.from('notebooks').select('*').eq('id', id).single();
-    if (error || !note) return console.error('openNotebook error:', error);
+    try {
+        const { data: note, error } = await supabaseClient.from('notebooks').select('*').eq('id', id).single();
+        if (error || !note) throw error;
+        populateNotebookEditor(note);
+        return;
+    } catch (error) {
+        console.warn('openNotebook fallback:', error);
+    }
+
+    const note = getStoredNotebooks(notebookTarget).find(nb => nb.id === id);
+    if (note) populateNotebookEditor(note);
+}
+
+function populateNotebookEditor(note) {
     document.getElementById('notebook-title').value = note.title || '';
     document.getElementById('notebook-editor').style.display = 'block';
-    document.getElementById('notebook-editor').dataset.type = note.type;
+    document.getElementById('notebook-editor').dataset.type = note.type || 'text';
     document.getElementById('notebook-type-controls').innerText = note.type === 'table' ? '表格大小：' : '文字內容';
     document.getElementById('notebook-text-area').style.display = note.type === 'text' ? 'block' : 'none';
     document.getElementById('notebook-table-area').style.display = note.type === 'table' ? 'block' : 'none';
@@ -160,7 +236,13 @@ async function openNotebook(id) {
 
 async function deleteNotebook(id) {
     if (!confirm('確定刪除這則記事嗎？')) return;
-    await supabaseClient.from('notebooks').delete().eq('id', id);
+    try {
+        await supabaseClient.from('notebooks').delete().eq('id', id);
+    } catch (error) {
+        console.warn('deleteNotebook supabase error:', error);
+    }
+    const storedNotebooks = getStoredNotebooks(notebookTarget).filter(nb => nb.id !== id);
+    saveStoredNotebooks(storedNotebooks, notebookTarget);
     if (currentNotebookId === id) {
         currentNotebookId = null;
         document.getElementById('notebook-editor').style.display = 'none';
