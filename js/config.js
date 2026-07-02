@@ -18,3 +18,4 @@ let presenceChannel = null;
 let messageChannel = null;
 let selectedFx = "";
 const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const defaultAvatarUrl = 'icon-192.png';

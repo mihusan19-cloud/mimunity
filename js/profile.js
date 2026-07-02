@@ -23,7 +23,7 @@ async function loadProfileData() {
     }
 
     if (!profileData) {
-        document.getElementById('p-img').src = 'https://via.placeholder.com/120';
+        document.getElementById('p-img').src = defaultAvatarUrl;
         if (isSelf) {
             document.getElementById('profile-display-title').innerText = '我的個人檔案';
             document.getElementById('profile-edit-area').style.display = 'block';
@@ -41,7 +41,7 @@ async function loadProfileData() {
         return;
     }
 
-    document.getElementById('p-img').src = getImageUrl(profileData.avatar_url) || 'https://via.placeholder.com/120';
+    document.getElementById('p-img').src = getImageUrl(profileData.avatar_url) || defaultAvatarUrl;
     const effectElement = document.getElementById('p-img-effect');
     const effectValue = profileData.avatar_fx || '';
     if (effectElement) {
@@ -154,7 +154,7 @@ function renderPosts(posts) {
                 <div class="post-header">
                     <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showUserMenu(event, '${p.user_id}')">
                         <div class="avatar-wrapper post-avatar-wrapper">
-                            <img src="${getImageUrl(p.profiles?.avatar_url) || ''}" class="post-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                            <img src="${getImageUrl(p.profiles?.avatar_url) || defaultAvatarUrl}" class="post-avatar" onerror="this.onerror=null;this.src='icon-192.png'">
                             ${authorFxImg}
                         </div>
                         <b>${escapeHTML(p.profiles?.username || '匿名')}</b>

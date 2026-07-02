@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mimmunity-v3';
+const CACHE_NAME = 'mimmunity-v1';
 const ASSETS = [
   './',
   './index.html',

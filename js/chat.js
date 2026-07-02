@@ -26,7 +26,7 @@ async function fetchUserList() {
         const effectImg = u.avatar_fx ? `<img src="${escapeHTML(u.avatar_fx)}" class="avatar-decoration avatar-decoration-image" alt="avatar effect">` : '';
         return `<div style="text-align:center; cursor:pointer; min-width:60px;" onclick="showUserMenu(event, '${u.id}')">
             <div class="avatar-wrapper">
-                <img src="${getImageUrl(u.avatar_url) || ''}" class="chat-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                <img src="${getImageUrl(u.avatar_url) || defaultAvatarUrl}" class="chat-avatar" onerror="this.onerror=null;this.src='icon-192.png'">
                 ${effectImg}
                 <div class="status-dot ${isOnline ? 'online' : ''}"></div>
             </div>
@@ -74,7 +74,7 @@ async function fetchMessages() {
         const profileFxImg = profileFx ? `<img src="${escapeHTML(profileFx)}" class="avatar-decoration avatar-decoration-image" alt="avatar effect">` : '';
         return `<div class="msg-container ${isMe ? 'msg-me' : 'msg-other'}">
             <div class="avatar-wrapper">
-                <img src="${getImageUrl(m.profiles?.avatar_url) || ''}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.src='https://via.placeholder.com/32'">
+                <img src="${getImageUrl(m.profiles?.avatar_url) || defaultAvatarUrl}" class="chat-avatar" onclick="showUserMenu(event, '${m.user_id}')" onerror="this.onerror=null;this.src='icon-192.png'">
                 ${profileFxImg}
             </div>
             <div class="bubble">

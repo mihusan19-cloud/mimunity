@@ -181,7 +181,7 @@ async function saveNotebook() {
             ? storedNotebooks.map(nb => nb.id === currentNotebookId ? { ...nb, ...payload, id: currentNotebookId } : nb)
             : [...storedNotebooks, { ...payload, id: fallbackId }];
         saveStoredNotebooks(fallbackNotebooks, notebookTarget);
-        alert('儲存失敗，已改為暫存到本機。');
+        alert('已暫存到本機，且可在本頁看到；若要同步到雲端，請確認 Supabase 的 notebooks 表存在且權限正確。');
         closeNotebookEditor();
         loadFriendNotebooks();
     }

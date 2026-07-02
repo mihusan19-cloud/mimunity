@@ -4,7 +4,7 @@ async function initAvatarFx() {
     if (!data || error) return;
     const avatar = document.getElementById('fx-preview-avatar');
     if (avatar) {
-        avatar.src = getImageUrl(data.avatar_url) || 'https://via.placeholder.com/80';
+        avatar.src = getImageUrl(data.avatar_url) || defaultAvatarUrl;
     }
     selectedFx = data.avatar_fx || '';
     document.querySelectorAll('.fx-item').forEach(el => {
