@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -32,16 +32,18 @@
 <div class="container">
     <div id="page-login" class="card active">
         <h2 style="text-align:center;">登入 mimunity</h2>
-        <input type="email" id="login-email" placeholder="Email">
-        <input type="password" id="login-password" placeholder="密碼">
-        <button class="btn-primary" onclick="handleLogin()">登入</button>
+        <input type="email" id="login-email" placeholder="Email" autocomplete="email">
+        <input type="password" id="login-password" placeholder="密碼" autocomplete="current-password">
+        <div id="login-error" style="display:none; color:#d93025; font-size:14px; margin:6px 0 10px;"></div>
+        <button class="btn-primary" id="login-btn" onclick="handleLogin()">登入</button>
         <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('register')">註冊帳號</button>
     </div>
 
     <div id="page-register" class="card">
         <h2 style="text-align:center;">加入我們</h2>
-        <input type="email" id="reg-email" placeholder="Email">
-        <input type="password" id="reg-password" placeholder="設定密碼">
+        <input type="email" id="reg-email" placeholder="Email" autocomplete="email">
+        <input type="password" id="reg-password" placeholder="設定密碼" autocomplete="new-password">
+        <div id="register-error" style="display:none; color:#d93025; font-size:14px; margin:6px 0 10px;"></div>
         <button style="background:#42b72a;" class="btn-primary" onclick="handleSignUp()">註冊</button>
         <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('login')">返回登入</button>
     </div>
