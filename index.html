@@ -14,125 +14,159 @@
     <script defer src="js/chat.js"></script>
     <script defer src="js/notebook.js"></script>
     <script defer src="js/avatarfx.js"></script>
-    <link rel="manifest" href="manifest.json?v=1.2">
-    <meta name="theme-color" content="#1877f2">
+    <link rel="manifest" href="manifest.json?v=1.4">
+    <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body onclick="hideUserMenu()">
 
-<nav id="main-nav" style="display:none;">
-    <a onclick="showPage('home')" id="nav-home">🏠 首頁動態</a>
-    <a onclick="showPage('chat')" id="nav-chat">💬 聊天大廳</a>
-    <a onclick="showPage('profile')" id="nav-profile">👤 個人檔案</a>
-    <a onclick="showPage('avatarfx')" id="nav-avatarfx">✨ 頭像特效</a>
-    <a onclick="toggleNotification()" id="notif-btn" style="color: var(--fb-gray);">開啟通知</a>
+<nav id="main-nav">
+    <div class="nav-inner">
+        <div class="brand" aria-label="mimunity">
+            <img src="icon-192.png" alt="">
+            <span>mimunity</span>
+        </div>
+        <div class="nav-links">
+            <a onclick="showPage('home')" id="nav-home"><span class="nav-icon">⌂</span><span>動態</span></a>
+            <a onclick="showPage('chat')" id="nav-chat"><span class="nav-icon">◌</span><span>聊天</span></a>
+            <a onclick="showPage('profile')" id="nav-profile"><span class="nav-icon">●</span><span>檔案</span></a>
+            <a onclick="showPage('avatarfx')" id="nav-avatarfx"><span class="nav-icon">✦</span><span>特效</span></a>
+            <a onclick="toggleNotification()" id="notif-btn"><span class="nav-icon">♢</span><span>通知</span></a>
+        </div>
+    </div>
 </nav>
 
 <div class="container">
-    <div id="page-login" class="card active">
-        <h2 style="text-align:center;">登入 mimunity</h2>
+    <div id="page-login" class="card auth-card active">
+        <div class="auth-brand"><img src="icon-192.png" alt=""><span>mimunity</span></div>
+        <h1>歡迎回來</h1>
+        <p class="auth-subtitle">登入後繼續和朋友分享日常</p>
         <input type="email" id="login-email" placeholder="Email" autocomplete="email">
         <input type="password" id="login-password" placeholder="密碼" autocomplete="current-password">
-        <div id="login-error" style="display:none; color:#d93025; font-size:14px; margin:6px 0 10px;"></div>
+        <div id="login-error" class="form-error"></div>
         <button class="btn-primary" id="login-btn" onclick="handleLogin()">登入</button>
-        <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('register')">註冊帳號</button>
+        <button class="btn-link" onclick="showPage('register')">還沒有帳號？建立帳號</button>
     </div>
 
-    <div id="page-register" class="card">
-        <h2 style="text-align:center;">加入我們</h2>
+    <div id="page-register" class="card auth-card">
+        <div class="auth-brand"><img src="icon-192.png" alt=""><span>mimunity</span></div>
+        <h1>建立新帳號</h1>
+        <p class="auth-subtitle">加入屬於你和朋友的小天地</p>
         <input type="email" id="reg-email" placeholder="Email" autocomplete="email">
         <input type="password" id="reg-password" placeholder="設定密碼" autocomplete="new-password">
-        <div id="register-error" style="display:none; color:#d93025; font-size:14px; margin:6px 0 10px;"></div>
-        <button style="background:#42b72a;" class="btn-primary" onclick="handleSignUp()">註冊</button>
-        <button style="background:none; color:var(--fb-blue); margin-top:10px; width:100%; border:none; cursor:pointer;" onclick="showPage('login')">返回登入</button>
+        <div id="register-error" class="form-error"></div>
+        <button class="btn-primary btn-success" onclick="handleSignUp()">註冊</button>
+        <button class="btn-link" onclick="showPage('login')">已經有帳號？返回登入</button>
     </div>
 
-    <div id="page-home" class="card">
-        <div id="welcome-msg" style="text-align:center; margin-bottom:15px; font-weight:bold; color:var(--fb-blue);"></div>
-        <div style="background:#fff; border:1px solid #dddfe2; padding:15px; border-radius:12px;">
+    <div id="page-home" class="card page-surface feed-page">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">首頁動態</p>
+                <h1 id="welcome-msg">今天想分享些什麼？</h1>
+            </div>
+        </header>
+        <div class="composer">
             <textarea id="post-content" rows="3" placeholder="分享新鮮事..."></textarea>
-            <div style="display:flex; justify-content: space-between; align-items:center; margin-top:10px;">
-                <input type="file" id="post-file" accept="image/*" style="font-size:12px; width: auto;">
-                <button class="btn-primary" style="width:100px; margin:0;" onclick="handleCreatePost()">發佈</button>
+            <div class="composer-actions">
+                <label class="file-action" for="post-file"><span>＋</span>加入圖片</label>
+                <input type="file" id="post-file" accept="image/*">
+                <button class="btn-primary compact" onclick="handleCreatePost()">發佈</button>
             </div>
         </div>
         <div id="posts-list"></div>
     </div>
 
-    <div id="page-chat" class="card">
-        <h3 id="chat-title" style="margin:0 0 10px 0;">💬 聊天大廳</h3>
-        <div id="user-list" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;"></div>
+    <div id="page-chat" class="card page-surface chat-page">
+        <header class="page-header compact-header">
+            <div><p class="eyebrow">訊息</p><h1 id="chat-title">公共聊天大廳</h1></div>
+        </header>
+        <div id="user-list" class="people-strip"></div>
         <div id="chat-box"></div>
-        <div style="margin-top:15px; background:#fff; padding:10px; border-radius:12px; border:1px solid #ddd;">
+        <div class="chat-composer">
             <input type="text" id="chat-input" placeholder="說點什麼... (可用 ||隱藏文字||)">
-            <div style="display:flex; justify-content: space-between; align-items:center; margin-top:5px;">
-                <div style="font-size:11px;">
-                    <input type="file" id="chat-file" style="width:130px; margin:0;"><br>
-                    <label style="cursor:pointer;"><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
+            <div class="chat-actions">
+                <div class="chat-options">
+                    <input type="file" id="chat-file">
+                    <label><input type="checkbox" id="chat-is-spoiler"> 標記為防雷</label>
                 </div>
-                <button class="btn-primary" style="width:80px; margin:0;" onclick="handleSendMessage()">傳送</button>
+                <button class="btn-primary compact" onclick="handleSendMessage()">傳送</button>
             </div>
         </div>
     </div>
    
-    <div id="page-notebook" class="card">
-        <h2 style="text-align:center;">好友記事本</h2>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:15px;">
-            <div id="notebook-friend-label" style="font-weight:bold; flex:1; min-width:180px;">請從好友列表打開記事本</div>
-            <button class="btn-primary" style="width:auto;" onclick="createNewNotebook('text')">新增文字記事</button>
-            <button class="btn-primary" style="width:auto; background:#42b72a;" onclick="createNewNotebook('table')">新增表格記事</button>
-        </div>
-        <div id="notebook-list"></div>
-        <div id="notebook-editor" style="display:none; margin-top:20px;">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <input type="text" id="notebook-title" placeholder="記事本標題" style="flex:1; min-width:200px;">
-                <button class="btn-primary" style="width:auto;" onclick="saveNotebook()">儲存記事</button>
-                <button class="btn-primary" style="width:auto; background:#8e8e8e;" onclick="closeNotebookEditor()">取消</button>
+    <div id="page-notebook" class="card page-surface notebook-page">
+        <button class="notebook-back" onclick="goBackFromNotebook()" aria-label="返回上一頁">
+            <span aria-hidden="true">←</span>
+            <span>返回</span>
+        </button>
+        <header class="page-header notebook-header">
+            <div><p class="eyebrow">私人空間</p><h1>好友記事本</h1><p id="notebook-friend-label">請從好友列表打開記事本</p></div>
+            <div class="header-actions">
+                <button class="btn-secondary" onclick="createNewNotebook('text')">＋ 文字記事</button>
+                <button class="btn-primary compact" onclick="createNewNotebook('table')">＋ 表格記事</button>
             </div>
-            <div id="notebook-type-controls" style="margin-top:10px; font-size:14px; color:#555;"></div>
-            <div id="notebook-text-area" style="display:none; margin-top:10px;">
+        </header>
+        <div id="notebook-list"></div>
+        <div id="notebook-editor" class="notebook-editor">
+            <div class="editor-toolbar">
+                <input type="text" id="notebook-title" placeholder="記事本標題">
+                <button class="btn-primary compact" onclick="saveNotebook()">儲存</button>
+                <button class="btn-secondary" onclick="closeNotebookEditor()">取消</button>
+            </div>
+            <div id="notebook-type-controls" class="editor-type"></div>
+            <div id="notebook-text-area" class="editor-area">
                 <textarea id="notebook-content" rows="10" placeholder="輸入記事內容..."></textarea>
             </div>
-            <div id="notebook-table-area" style="display:none; margin-top:10px;">
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                    <input type="number" id="notebook-table-rows" min="1" value="3" style="width:80px;" placeholder="列">
-                    <input type="number" id="notebook-table-cols" min="1" value="3" style="width:80px;" placeholder="欄">
-                    <button class="btn-primary" style="width:auto;" onclick="buildNotebookTable()">建立表格</button>
+            <div id="notebook-table-area" class="editor-area">
+                <div class="table-controls">
+                    <label>列 <input type="number" id="notebook-table-rows" min="1" value="3"></label>
+                    <label>欄 <input type="number" id="notebook-table-cols" min="1" value="3"></label>
+                    <button class="btn-secondary" onclick="buildNotebookTable()">建立表格</button>
                 </div>
-                <div id="notebook-table-editor" style="margin-top:10px;"></div>
+                <div id="notebook-table-editor"></div>
             </div>
         </div>
     </div>
 
-    <div id="page-profile" class="card">
-        <h2 id="profile-display-title" style="text-align:center;">個人檔案</h2>
-        <div style="text-align:center; margin-bottom:20px;">
-            <div class="avatar-wrapper preview-avatar" style="width:120px; height:120px; margin:0 auto;">
-                <img id="p-img" src="icon-192.png" onerror="this.onerror=null;this.src='icon-192.png'" style="width:120px; height:120px; border-radius:50%; border:3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); object-fit:cover; background:#eee; position:relative; z-index:1;">
+    <div id="page-profile" class="card page-surface profile-page">
+        <div class="profile-hero">
+            <div class="profile-accent"></div>
+            <div class="avatar-wrapper preview-avatar profile-avatar">
+                <img id="p-img" src="icon-192.png" onerror="this.onerror=null;this.src='icon-192.png'">
                 <img id="p-img-effect" class="avatar-decoration" src="" style="display:none;">
             </div>
+            <h1 id="profile-display-title">個人檔案</h1>
         </div>
         <div id="profile-edit-area">
-            <input type="file" id="avatar-file" accept="image/*">
-            <button class="btn-primary" style="background:#8e8e8e;" onclick="handleAvatarUpload()">上傳新頭像</button>
+            <div class="avatar-upload-row">
+                <input type="file" id="avatar-file" accept="image/*">
+                <button class="btn-secondary" onclick="handleAvatarUpload()">上傳新頭像</button>
+            </div>
+            <label class="field-label" for="username">顯示名稱</label>
             <input type="text" id="username" placeholder="設定你的使用者名稱">
-            <textarea id="bio" placeholder="自我介紹..." rows="4"></textarea>
-            <button class="btn-primary" onclick="saveProfile()">儲存更新</button>
-            <button onclick="handleLogout()" style="color:red; background:none; margin-top:20px; width:100%; font-weight:bold; cursor:pointer; border:none;">登出</button>
+            <label class="field-label" for="bio">自我介紹</label>
+            <textarea id="bio" placeholder="介紹一下自己..." rows="4"></textarea>
+            <div class="profile-actions">
+                <button class="btn-primary compact" onclick="saveProfile()">儲存更新</button>
+                <button class="btn-danger-ghost" onclick="handleLogout()">登出</button>
+            </div>
         </div>
-        <div id="profile-view-area" style="display:none; text-align:center;">
-            <h3 id="view-username" style="margin:5px 0;"></h3>
-            <p id="view-bio" style="white-space:pre-wrap; color:var(--fb-gray); margin-bottom:20px;"></p>
-            <button class="btn-primary" id="btn-quick-chat">💬 發送私訊</button>
-            <button class="btn-primary" style="background:#8e8e8e; margin-top:10px;" onclick="showPage('home')">返回首頁</button>
+        <div id="profile-view-area" class="profile-view">
+            <h3 id="view-username"></h3>
+            <p id="view-bio"></p>
+            <div class="profile-actions centered">
+                <button class="btn-primary compact" id="btn-quick-chat">發送私訊</button>
+                <button class="btn-secondary" onclick="showPage('home')">返回首頁</button>
+            </div>
         </div>
     </div>
 
-    <div id="page-avatarfx" class="card">
-        <h2 style="text-align:center;">頭像特效</h2>
-        <div style="display:flex; justify-content:center; margin:20px 0;">
-            <div class="avatar-wrapper preview-avatar">
+    <div id="page-avatarfx" class="card page-surface fx-page">
+        <header class="page-header centered-header"><div><p class="eyebrow">個人化</p><h1>頭像特效</h1><p>選擇一個喜歡的裝飾，立即預覽效果</p></div></header>
+        <div class="fx-preview-stage">
+            <div class="avatar-wrapper preview-avatar fx-preview-avatar">
                 <img id="fx-preview-avatar" class="chat-avatar" src="icon-192.png">
                 <img id="fx-preview-effect" class="avatar-decoration" src="" style="display:none;">
             </div>
@@ -163,14 +197,14 @@
                 <img src="effects/effectsfx7.png" alt="fx7">
             </div>
         </div>
-        <button class="btn-primary" style="margin-top:10px;" onclick="saveAvatarFx()">套用特效</button>
+        <button class="btn-primary fx-save" onclick="saveAvatarFx()">套用特效</button>
     </div>
 </div>
 
 <div id="user-action-menu">
-    <div class="menu-item" id="menu-view-profile">👤 查看個人檔案</div>
-    <div class="menu-item" id="menu-open-notebook">🗒 好友記事本</div>
-    <div class="menu-item" id="menu-start-chat" style="color:var(--fb-blue); font-weight:bold;">💬 發送私訊</div>
+    <div class="menu-item" id="menu-view-profile">查看個人檔案</div>
+    <div class="menu-item" id="menu-open-notebook">好友記事本</div>
+    <div class="menu-item menu-primary" id="menu-start-chat">發送私訊</div>
 </div>
 
 </body>

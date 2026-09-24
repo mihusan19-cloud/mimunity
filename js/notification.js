@@ -2,14 +2,16 @@ function updateNotifBtn(status) {
     const btn = document.getElementById('notif-btn');
     if (!btn) return;
     if (status === 'granted') {
-        btn.innerText = '🔔 通知已開啟';
-        btn.style.color = 'var(--fb-green)';
+        btn.innerHTML = '<span class="nav-icon">●</span><span>通知開啟</span>';
+        btn.classList.add('notification-on');
+        btn.classList.remove('notification-blocked');
     } else if (status === 'denied') {
-        btn.innerText = '🚫 通知被封鎖';
-        btn.style.color = 'red';
+        btn.innerHTML = '<span class="nav-icon">×</span><span>通知封鎖</span>';
+        btn.classList.add('notification-blocked');
+        btn.classList.remove('notification-on');
     } else {
-        btn.innerText = '開啟通知';
-        btn.style.color = 'var(--fb-gray)';
+        btn.innerHTML = '<span class="nav-icon">♢</span><span>通知</span>';
+        btn.classList.remove('notification-on', 'notification-blocked');
     }
 }
 

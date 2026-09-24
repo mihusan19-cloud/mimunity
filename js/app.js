@@ -1,4 +1,14 @@
+let notebookReturnPage = 'chat';
+
 function showPage(p) {
+    if (p === 'notebook') {
+        const activePage = document.querySelector('.card.active');
+        const activePageName = activePage?.id.replace('page-', '');
+        if (activePageName && !['notebook', 'login', 'register'].includes(activePageName)) {
+            notebookReturnPage = activePageName;
+        }
+    }
+
     if (p !== 'profile') viewingUserId = null;
     if (p !== 'notebook') notebookTarget = null;
     document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
@@ -13,6 +23,13 @@ function showPage(p) {
     if (p === 'profile') loadProfileData();
     if (p === 'notebook') loadFriendNotebooks();
     if (p === 'avatarfx') initAvatarFx();
+}
+
+function goBackFromNotebook() {
+    const returnPage = document.getElementById(`page-${notebookReturnPage}`)
+        ? notebookReturnPage
+        : 'chat';
+    showPage(returnPage);
 }
 
 function showUserMenu(e, userId) {

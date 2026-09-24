@@ -43,10 +43,10 @@ async function fetchMessages() {
     let query = supabaseClient.from('messages').select('*, profiles(username, avatar_url, avatar_fx)');
     if (chatTarget) {
         query = query.or(`and(user_id.eq.${currentUser.id},receiver_id.eq.${chatTarget}),and(user_id.eq.${chatTarget},receiver_id.eq.${currentUser.id})`);
-        document.getElementById('chat-title').innerHTML = `💬 私訊中 <button onclick="chatTarget=null;fetchMessages();" style="font-size:10px; cursor:pointer; background:none; border:1px solid #ddd; padding:2px 5px; border-radius:4px;">返回大廳</button>`;
+        document.getElementById('chat-title').innerHTML = `私訊中 <button class="chat-back-btn" onclick="chatTarget=null;fetchMessages();">返回大廳</button>`;
     } else {
         query = query.is('receiver_id', null);
-        document.getElementById('chat-title').innerHTML = '💬 公共聊天大廳';
+        document.getElementById('chat-title').innerHTML = '公共聊天大廳';
     }
 
     const { data: msgs, error } = await query.order('created_at', { ascending: true });
